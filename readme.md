@@ -214,21 +214,6 @@ Alternatively `--masterkey <hex>` unlocks the vault with its master key. A
 given master key is checked against existing vault content before anything
 gets encrypted with it.
 
-Roadmap
--------
-
-1. **Read only** (done): `info`, `cat`, `decrypt`.
-2. **Write** (done): `encrypt` and `init`, verified by mounting the result
-   with real gocryptfs and running `gocryptfs -fsck`.
-3. **Sync** (done): two-way synchronisation between a vault and a plaintext
-   directory.
-4. **Automation** (done): configuration file with multiple pairs, password
-   from the operating system's credential store, `daemon` and per user
-   autostart (no admin rights needed).
-5. **Distribution** (done): standalone executables via Node's single
-   executable applications for Linux, macOS and Windows (x64 and arm64),
-   each checked end to end on its own platform in CI.
-
 Related projects
 ----------------
 
