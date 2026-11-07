@@ -1,0 +1,101 @@
+name: gocryptfs compatibility
+run-name: gocryptfs compatibility
+
+on:
+  # NOTE: Runs on branch or tag creation.
+  create:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  # Runs when a new pre-release version was prepared.
+  repository_dispatch:
+    types:
+      - prepare-pre-release-event
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  main:
+    # NOTE: No container here since mounting via FUSE needs the host runner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+
+      - name: Install gocryptfs and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fuse3 gocryptfs
+          npm install --global corepack
+          corepack enable
+          yarn install
+
+      - name: Build
+        run: yarn build
+
+      - name: Create vault with real gocryptfs and fill it via its mount
+        run: |
+          mkdir vault mount
+          echo compatibility > password
+          gocryptfs -init -plaintextnames -scryptn 10 -passfile password -quiet vault
+          gocryptfs -passfile password -quiet vault mount
+
+          mkdir -p 'mount/sub/deeper dir'
+          : > mount/empty
+          head --bytes 1 /dev/urandom > mount/one
+          head --bytes 4096 /dev/urandom > mount/sub/exact
+          head --bytes 4097 /dev/urandom > 'mount/sub/deeper dir/plus one'
+          head --bytes 5000000 /dev/urandom > mount/sub/large
+          truncate --size 100000 mount/sparse
+          echo 'Ünïcödé' > 'mount/Ünïcödé.txt'
+          ln --symbolic sub/exact mount/link
+
+          cp --archive mount expected
+          fusermount3 -u mount
+
+      - name: Decrypt with gocryptfs-standalone and compare
+        run: |
+          node dist/index.js info vault
+          node dist/index.js decrypt vault decrypted --passfile password
+          diff --recursive --no-dereference expected decrypted
+          node dist/index.js cat vault sub/large --passfile password |
+            cmp - expected/sub/large
+
+      - name: Create vault and encrypt with gocryptfs-standalone
+        run: |
+          node dist/index.js init own-vault --passfile password --scryptn 10
+          node dist/index.js encrypt expected own-vault --passfile password
+
+      - name: Check and mount it with real gocryptfs and compare
+        run: |
+          gocryptfs -fsck -passfile password own-vault
+          mkdir own-mount
+          gocryptfs -passfile password -quiet own-vault own-mount
+          diff --recursive --no-dereference expected own-mount
+          fusermount3 -u own-mount
+
+      - name: Synchronize in both directions alongside a real gocryptfs mount
+        env:
+          GOCRYPTFS_STANDALONE_CONFIGURATION_DIRECTORY: ${{ runner.temp }}/configuration
+        run: |
+          node dist/index.js sync local vault --passfile password
+          diff --recursive --no-dereference expected local
+
+          echo 'local change' > local/one
+          rm local/sub/exact
+          node dist/index.js sync local vault --passfile password
+
+          gocryptfs -passfile password -quiet vault mount
+          test "$(cat mount/one)" = 'local change'
+          test ! -e mount/sub/exact
+          echo 'remote change' > mount/new
+          fusermount3 -u mount
+
+          node dist/index.js sync local vault --passfile password
+          test "$(cat local/new)" = 'remote change'
+          gocryptfs -fsck -passfile password vault

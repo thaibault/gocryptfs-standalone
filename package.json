@@ -1,0 +1,148 @@
+{
+  "name": "gocryptfs-standalone",
+  "version": "0.0.1",
+  "description": "Synchronizes a gocryptfs (plaintext names) encrypted directory with a decrypted copy without needing FUSE or admin rights.",
+  "keywords": [
+    "cli",
+    "cloud",
+    "decrypt",
+    "encrypt",
+    "gocryptfs",
+    "standalone",
+    "sync"
+  ],
+  "homepage": "https://tsickert.com/gocryptfs-standalone",
+  "bugs": {
+    "email": "info@tsickert.com",
+    "url": "https://github.com/thaibault/gocryptfs-standalone/issues"
+  },
+  "license": "CC-BY-3.0",
+  "author": {
+    "email": "info@tsickert.com",
+    "name": "Torben Sickert",
+    "url": "https://tsickert.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thaibault/gocryptfs-standalone.git"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "scripts": {
+    "build": "weboptimizer build",
+    "check": "yarn check:types && yarn lint",
+    "check:types": "weboptimizer check:types",
+    "clear": "weboptimizer clear",
+    "document": "weboptimizer document",
+    "lint": "weboptimizer lint",
+    "prepare": "yarn build",
+    "start": "./dist/index.js",
+    "test": "weboptimizer test",
+    "test:coverage": "weboptimizer test:coverage",
+    "test:coverage:report": "weboptimizer test:coverage:report",
+    "watch": "weboptimizer build --watch"
+  },
+  "devDependencies": {
+    "@babel/cli": "^8.1.0",
+    "@babel/eslint-parser": "^8.0.7",
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/node": "^26.6.6",
+    "@types/webpack-env": "^1.18.8",
+    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.1",
+    "eslint": "^10.14.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-jsdoc": "^65.4.2",
+    "jest": "^30.5.2",
+    "jsdoc": "^4.0.5",
+    "typescript-eslint": "^8.72.1",
+    "weboptimizer": "^4.0.103"
+  },
+  "resolutions": {
+    "colors": "1.4.0",
+    "globals@npm:^11.1.0": "patch:globals@npm%3A11.12.0#~/.yarn/patches/globals-npm-11.12.0-1fa7f41a6c.patch",
+    "globals@npm:^14.0.0": "patch:globals@npm%3A11.12.0#~/.yarn/patches/globals-npm-11.12.0-1fa7f41a6c.patch",
+    "globals@npm:^9.18.0": "patch:globals@npm%3A11.12.0#~/.yarn/patches/globals-npm-11.12.0-1fa7f41a6c.patch"
+  },
+  "engines": {
+    "node": ">=26",
+    "npm": ">=12",
+    "yarn": ">=4"
+  },
+  "webOptimizer": {
+    "assetPattern": {
+      "javaScript": {
+        "includeFilePathRegularExpression": "^(.+/)?index\\.js$",
+        "pattern": {
+          "#": "This is how we can make our main exported artefact executable.",
+          "__evaluate__": "`#!/usr/bin/env node\n// -*- coding: utf-8 -*-\n${self.generic.assetPattern?.javaScript?.pattern ?? ''}\n{1}`"
+        }
+      }
+    },
+    "files": {
+      "#": "A command line application needs no html entry page.",
+      "html": []
+    },
+    "library": false,
+    "module": {
+      "optimizer": {
+        "terser": {
+          "terserOptions": {
+            "compress": {
+              "#": "To provide a logging output we need to exclude this feature.",
+              "drop_console": {
+                "__evaluate__": "false"
+              },
+              "drop_debugger": {
+                "__evaluate__": "false"
+              }
+            }
+          }
+        }
+      }
+    },
+    "path": {
+      "source": {
+        "asset": {
+          "javaScript": "./"
+        }
+      },
+      "target": {
+        "asset": {
+          "javaScript": "./"
+        }
+      }
+    },
+    "targetTechnology": {
+      "boilerplate": "node",
+      "payload": "node"
+    },
+    "test": {
+      "#": "Application projects get no test entry injected by default.",
+      "injection": {
+        "entry": {
+          "testBundle": "./test"
+        }
+      }
+    },
+    "webpack": {
+      "module": {
+        "parser": {
+          "javascript": {
+            "importMeta": {
+              "#": "NOTE: We want to have this preserved by webpack to get the runtime value for \"import.meta.main\".",
+              "main": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "packageManager": "yarn@4.18.1+sha512.b2e1e7524f654f2749d32b4ebcb4622473cb5bcbc485df2007e12a154e50162a4d795526768bc5f5b8f81717bfd79deb2472813d86fb5ae2eb551fa9c872b08f"
+}
