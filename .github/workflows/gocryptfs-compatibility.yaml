@@ -26,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 26
+          # NOTE: Would query the global yarn 1 which refuses this project.
+          package-manager-cache: false
 
       - name: Install gocryptfs and dependencies
         run: |
