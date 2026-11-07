@@ -35,6 +35,7 @@
   "sideEffects": true,
   "scripts": {
     "build": "weboptimizer build",
+    "build:standalone": "yarn build && node standalone.ts build",
     "check": "yarn check:types && yarn lint",
     "check:types": "weboptimizer check:types",
     "clear": "weboptimizer clear",
@@ -45,6 +46,7 @@
     "test": "weboptimizer test",
     "test:coverage": "weboptimizer test:coverage",
     "test:coverage:report": "weboptimizer test:coverage:report",
+    "test:standalone": "node standalone.ts test",
     "watch": "weboptimizer build --watch"
   },
   "devDependencies": {

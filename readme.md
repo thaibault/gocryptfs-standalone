@@ -13,11 +13,24 @@ endregion -->
 Project Status
 --------------
 
+[![npm](https://img.shields.io/npm/v/gocryptfs-standalone?color=%23d55e5d&label=npm%20package%20version&logoColor=%23d55e5d&style=for-the-badge)](https://www.npmjs.com/package/gocryptfs-standalone)
+[![npm downloads](https://img.shields.io/npm/dy/gocryptfs-standalone.svg?style=for-the-badge)](https://www.npmjs.com/package/gocryptfs-standalone)
+
 [![build](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/build.yaml?style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/build.yaml)
+[![build push package](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/build-package-and-push.yaml?label=build%20push%20package&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/build-package-and-push.yaml)
+
 [![check types](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/check-types.yaml?label=check%20types&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/check-types.yaml)
 [![lint](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/lint.yaml?label=lint&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/lint.yaml)
 [![test](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/test-coverage-report.yaml?label=test&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/test-coverage-report.yaml)
 [![gocryptfs compatibility](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/gocryptfs-compatibility.yaml?label=gocryptfs%20compatibility&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/gocryptfs-compatibility.yaml)
+[![standalone executables](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/standalone-executables.yaml?label=standalone%20executables&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/standalone-executables.yaml)
+
+[![code coverage](https://img.shields.io/coverallsCoverage/github/thaibault/gocryptfs-standalone?label=code%20coverage&style=for-the-badge)](https://coveralls.io/github/thaibault/gocryptfs-standalone)
+
+[![deploy web documentation](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/deploy-web-documentation.yaml?label=deploy%20web%20documentation&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/deploy-web-documentation.yaml)
+[![web documentation](https://img.shields.io/website-up-down-green-red/https/tsickert.com/gocryptfs-standalone.svg?label=web-documentation&style=for-the-badge)](https://tsickert.com/gocryptfs-standalone)
+
+[![Open in CodeSandbox](https://img.shields.io/badge/Open%20in-CodeSandbox-blue?style=for-the-badge&logo=codesandbox)](https://githubbox.com/thaibault/gocryptfs-standalone)
 
 Use case
 --------
@@ -30,6 +43,30 @@ rights). The tool runs as a standalone executable on Linux, macOS and Windows.
 Only vaults created with **`gocryptfs -init -plaintextnames`** are supported
 (feature flags `HKDF GCMIV128 PlaintextNames`). Every other vault is refused
 so it never gets damaged.
+
+Installation
+------------
+
+Download the executable of your platform from the
+[releases](https://github.com/thaibault/gocryptfs-standalone/releases)
+(`linux`, `macos` or `windows`, each for `x64` and `arm64`), unpack it and
+run it, no installation or admin rights needed. `SHA256SUMS` lists the
+checksums of all archives.
+
+The executables are not signed by a registered developer, so:
+
+- **macOS** blocks downloaded ones at first: remove the quarantine flag with
+  `xattr -d com.apple.quarantine gocryptfs-standalone-macos-*` (or allow it
+  under "System Settings → Privacy & Security").
+- **Windows** SmartScreen may warn on first start ("More info → Run
+  anyway").
+- **Linux** executables need a glibc based distribution (not Alpine/musl).
+
+With node (26 or newer) the package can be used directly as well:
+`npx gocryptfs-standalone …`.
+
+To build the executable of the current platform yourself:
+`yarn build:standalone` (and `yarn test:standalone` to check it end to end).
 
 Usage
 -----
@@ -90,7 +127,81 @@ gitignore conventions:
 Supported globs: `*`, `**`, `?`, `[...]` and `{a,b}`. Matching is case
 insensitive on macOS and Windows.
 
-### Password
+### Configured pairs and background synchronisation
+
+Pairs of a plaintext directory and a vault can be configured once and then
+be synchronized by name, all at once or periodically in the background:
+
+```bash
+# Asks for the password, verifies it and stores it in the keychain.
+gocryptfs-standalone pair add documents ~/Documents/private ~/GoogleDrive/vault --interval 10m
+gocryptfs-standalone pair list
+gocryptfs-standalone sync documents        # one pair
+gocryptfs-standalone sync                  # all pairs
+gocryptfs-standalone daemon                # all pairs in their intervals until stopped
+gocryptfs-standalone service install       # start "daemon" after each log in
+gocryptfs-standalone service status
+gocryptfs-standalone service uninstall
+gocryptfs-standalone pair remove documents
+```
+
+Everything lives in `configuration.json` inside the configuration directory
+and can be edited by hand as well:
+
+```json
+{
+    "defaults": {
+        "excludes": [".DS_Store", "._*", ".~lock.*#", "Thumbs.db", "desktop.ini", "~$*"],
+        "interval": "10m",
+        "trashDays": 30
+    },
+    "pairs": {
+        "documents": {
+            "plaintext": "/home/me/Documents/private",
+            "vault": "/home/me/GoogleDrive/vault",
+            "interval": "5m",
+            "excludes": ["*.tmp", "build/"],
+            "trashDays": 7,
+            "password": "keychain"
+        }
+    }
+}
+```
+
+A pair's excludes are added to the default ones. Intervals take seconds,
+minutes or hours (`30s`, `10m`, `2h`, at least 10 seconds). Password sources:
+
+| Source | Meaning |
+| --- | --- |
+| `"keychain"` (default of `pair add`) | operating system's credential store, see below |
+| `"prompt"` | asked interactively (once when the daemon starts) |
+| `"environment"` | environment variable `GOCRYPTFS_PASSWORD` |
+| `{"file": "<path>"}` | first line of the file (`pair add --passfile`) |
+| `{"command": "<command line>"}` | first line of the output (`pair add --extpass`) |
+
+Credential stores used without any native module or admin rights:
+
+- **macOS**: login keychain via `security`
+- **Linux**: Secret Service (GNOME Keyring, KWallet, …) via `secret-tool`
+  (package `libsecret-tools` or similar)
+- **Windows**: DPAPI via PowerShell, the encrypted password is stored in
+  `credentials/<pair>.dpapi` inside the configuration directory and can only
+  be decrypted by the same user on the same machine
+
+The daemon unlocks all vaults on start (so wrong passwords fail early),
+synchronizes every pair right away and afterwards in its interval. Runs never
+overlap and failures get retried in the next interval. `service install`
+registers it per user:
+
+- **macOS**: launchd agent `~/Library/LaunchAgents/com.tsickert.gocryptfs-standalone.plist`,
+  logging to `daemon.log` in the configuration directory
+- **Linux**: systemd user unit `~/.config/systemd/user/gocryptfs-standalone.service`
+  (log: `journalctl --user -u gocryptfs-standalone`, keep it running while
+  logged out with `loginctl enable-linger`)
+- **Windows**: command file in the user's startup folder, starting the daemon
+  minimized and logging to `daemon.log` in the configuration directory
+
+### Password of single commands
 
 The password is taken from the first available source:
 
@@ -111,11 +222,12 @@ Roadmap
    with real gocryptfs and running `gocryptfs -fsck`.
 3. **Sync** (done): two-way synchronisation between a vault and a plaintext
    directory.
-4. **Automation**: configuration file with multiple vault/directory pairs,
-   password from the operating system's credential store, `daemon` mode with
-   a configurable interval and per user autostart (no admin rights needed).
-5. **Distribution**: standalone executables via Node's single executable
-   applications for Linux, macOS and Windows (x64 and arm64).
+4. **Automation** (done): configuration file with multiple pairs, password
+   from the operating system's credential store, `daemon` and per user
+   autostart (no admin rights needed).
+5. **Distribution** (done): standalone executables via Node's single
+   executable applications for Linux, macOS and Windows (x64 and arm64),
+   each checked end to end on its own platform in CI.
 
 Related projects
 ----------------
