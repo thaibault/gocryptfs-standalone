@@ -35,8 +35,22 @@ import {
 import {
     CorruptFileError, decryptFileContent, deriveContentKey
 } from './content'
+import {runDaemon} from './daemon'
 import {createExcludeMatcher} from './exclude'
-import {getPassword} from './password'
+import {createKeychain} from './keychain'
+import type {Keychain} from './keychain'
+import {getPairPassword, getPassword} from './password'
+import {createService} from './service'
+import type {Service} from './service'
+import {
+    loadSettings,
+    parseInterval,
+    PAIR_NAME_PATTERN,
+    resolvePair,
+    saveSettings,
+    validatePasswordSource
+} from './settings'
+import type {PasswordSource, ResolvedPair} from './settings'
 import {DEFAULT_TRASH_RETENTION_IN_DAYS, LockedError} from './state'
 import {synchronize} from './synchronize'
 import {
@@ -65,6 +79,18 @@ Commands:
   decrypt <vault> <target>       Decrypt the whole vault into target.
   encrypt <source> <vault>       Encrypt the whole source into the vault.
   sync <plaintext> <vault>       Synchronize both directions (see below).
+  sync [<pair>]                  Synchronize given or all configured pairs.
+
+  pair add <name> <plaintext> <vault>
+                                 Configure a pair (verifies the password and
+                                 stores it in the keychain by default).
+  pair remove <name>             Remove a pair (keeps its trash).
+  pair list                      Show configured pairs.
+  daemon [<pair>...]             Synchronize pairs in their intervals until
+                                 stopped.
+  service install|uninstall|status
+                                 Start "daemon" automatically after log in
+                                 (per user, no admin rights needed).
 
 Options:
   --passfile <path>              Read the password from the file's first line.
@@ -79,6 +105,12 @@ Options:
                                  trash (default ${String(
         DEFAULT_TRASH_RETENTION_IN_DAYS
     )}).
+  --interval <duration>          Synchronisation interval of a pair, e.g.
+                                 "30s", "10m" (default) or "2h".
+  --password <source>            Password source of a pair: "keychain"
+                                 (default), "prompt" or "environment".
+                                 "--passfile" and "--extpass" configure a
+                                 file or command instead.
   -h, --help                     Show this help.
   -v, --version                  Show the version.
 
@@ -94,6 +126,9 @@ Exclude patterns follow gitignore conventions: without a slash they match
 names at any depth ("*.tmp", ".DS_Store"), with a slash paths relative to
 the root ("docs/*.pdf", "/build"), a trailing slash only matches directories
 ("cache/"). Supported globs: "*", "**", "?", "[...]" and "{a,b}".
+
+Pairs, their intervals, excludes and password sources are configured in
+"configuration.json" in the user's configuration directory (see readme).
 `
 
 export interface Output {
@@ -120,6 +155,13 @@ export const defaultOutput: Output = {
                 resolve()
         })
     })
+}
+
+export interface Dependencies {
+    keychain: Keychain
+    service: Service
+    // Stops a running daemon (defaults to SIGINT and SIGTERM).
+    signal?: AbortSignal
 }
 
 class UsageError extends Error {
@@ -188,11 +230,16 @@ const report = (output: Output, verb: string, result: TreeResult): number => {
  * Runs the command line interface.
  * @param argv - Arguments without node and script path.
  * @param output - Output channels.
+ * @param givenDependencies - Replaces platform integrations (for testing).
  * @returns Exit code.
  */
 export const run = async (
-    argv: Array<string>, output: Output = defaultOutput
+    argv: Array<string>,
+    output: Output = defaultOutput,
+    givenDependencies: Partial<Dependencies> = {}
 ): Promise<number> => {
+    const getKeychain = () => givenDependencies.keychain ?? createKeychain()
+
     try {
         const {positionals, values} = parseArgs({
             allowPositionals: true,
@@ -206,21 +253,28 @@ export const run = async (
                 'dry-run': {type: 'boolean'},
                 exclude: {multiple: true, type: 'string'},
                 'trash-days': {type: 'string'},
+                interval: {type: 'string'},
+                password: {type: 'string'},
                 version: {short: 'v', type: 'boolean'}
             }
         })
 
         if (values.version) {
-            output.log(packageConfiguration.version)
+            await output.write(Buffer.from(`${packageConfiguration.version}\n`))
 
             return 0
         }
 
         const [command, ...parameters] = positionals
-        if (values.help || !command) {
-            output.log(USAGE)
+        if (values.help) {
+            await output.write(Buffer.from(USAGE))
 
-            return values.help ? 0 : EXIT_CODES.usage
+            return 0
+        }
+        if (!command) {
+            output.error(USAGE)
+
+            return EXIT_CODES.usage
         }
 
         const isExcluded = createExcludeMatcher(values.exclude ?? [])
@@ -240,11 +294,27 @@ export const run = async (
                 file: values.passfile
             }))
 
-        const getContentKey = async (vaultPath: string): Promise<Buffer> => {
+        const hasExplicitPassword = Boolean(
+            values.extpass ?? values.masterkey ?? values.passfile
+        )
+        /*
+            NOTE: Password options given on the command line take precedence
+            over the one configured for a pair.
+        */
+        const getContentKey = async (
+            vaultPath: string, pair?: ResolvedPair
+        ): Promise<Buffer> => {
             const configuration = await loadConfiguration(vaultPath)
             const masterKey = values.masterkey ?
                 parseMasterKey(values.masterkey) :
-                await unlockMasterKey(configuration, await getPasswordBuffer())
+                await unlockMasterKey(
+                    configuration,
+                    pair && !hasExplicitPassword ?
+                        Buffer.from(await getPairPassword(
+                            pair.password, pair.name, getKeychain()
+                        )) :
+                        await getPasswordBuffer()
+                )
             const contentKey = deriveContentKey(masterKey)
             masterKey.fill(0)
 
@@ -272,6 +342,87 @@ export const run = async (
             }
 
             return contentKey
+        }
+
+        const parseTrashDays = (): number | undefined => {
+            if (values['trash-days'] === undefined)
+                return undefined
+
+            const days = Number(values['trash-days'])
+            if (!Number.isInteger(days) || days < 0)
+                throw new UsageError(
+                    '"--trash-days" has to be a non negative integer.'
+                )
+
+            return days
+        }
+
+        const synchronizePair = async (
+            pair: ResolvedPair,
+            contentKey: Buffer,
+            log: (text: string) => void,
+            dryRun = false
+        ) => {
+            const result = await synchronize({
+                dryRun,
+                excludes: createExcludeMatcher(pair.excludes),
+                key: contentKey,
+                onAction: (action) => {
+                    const description = describeAction(action)
+                    if (description)
+                        log(description)
+                },
+                plainPath: pair.plaintext,
+                trashRetentionInDays: pair.trashDays,
+                vaultPath: pair.vault
+            })
+
+            if (result.warning)
+                output.error(result.warning)
+            for (const {path, reason} of result.failed)
+                output.error(`Failed "${path}": ${reason}`)
+
+            const changes = result.actions.filter((action) =>
+                !['forget', 'record', 'skip'].includes(action.type)
+            ).length
+
+            return {
+                changes,
+                failed: result.failed.length > 0 ||
+                    result.actions.some((action) => action.type === 'skip'),
+                summary: `${dryRun ? 'Would apply' : 'Applied'} ` +
+                    `${String(changes - result.failed.length)} changes` +
+                    (result.failed.length > 0 ?
+                        `, ${String(result.failed.length)} failed` :
+                        '') +
+                    '.'
+            }
+        }
+
+        const getPairs = async (names: Array<string>) => {
+            const settings = await loadSettings()
+            const pairNames = names.length > 0 ?
+                names :
+                Object.keys(settings.pairs)
+            if (pairNames.length === 0)
+                throw new UsageError(
+                    'No pairs configured, see "pair add" or give a ' +
+                    'plaintext directory and a vault.'
+                )
+
+            const trashDays = parseTrashDays()
+
+            return pairNames.map((name) => {
+                const pair = resolvePair(settings, name)
+
+                return {
+                    ...pair,
+                    excludes: [...pair.excludes, ...values.exclude ?? []],
+                    plaintext: resolve(pair.plaintext),
+                    trashDays: trashDays ?? pair.trashDays,
+                    vault: resolve(pair.vault)
+                }
+            })
         }
 
         switch (command) {
@@ -368,65 +519,252 @@ export const run = async (
             return report(output, 'Encrypted', result)
         }
         case 'sync': {
-            expectParameters(['plaintext', 'vault'])
-            const [plainPath, vaultPath] = parameters.map((path) =>
-                resolve(path)
-            )
-            if (isNested(plainPath, vaultPath))
+            let pairs: Array<ResolvedPair>
+            if (parameters.length === 2) {
+                const [plaintext, vault] = parameters.map((path) =>
+                    resolve(path)
+                )
+                pairs = [{
+                    excludes: values.exclude ?? [],
+                    intervalInMilliseconds: 0,
+                    name: 'command line',
+                    password: 'prompt',
+                    plaintext,
+                    trashDays:
+                        parseTrashDays() ?? DEFAULT_TRASH_RETENTION_IN_DAYS,
+                    vault
+                }]
+            } else if (parameters.length < 2)
+                pairs = await getPairs(parameters)
+            else
                 throw new UsageError(
-                    'Plaintext directory and vault must not be located ' +
-                    'inside each other.'
+                    'Command "sync" expects: [<pair>] or <plaintext> <vault>'
                 )
 
-            const trashRetentionInDays = values['trash-days'] === undefined ?
-                DEFAULT_TRASH_RETENTION_IN_DAYS :
-                Number(values['trash-days'])
-            if (
-                !Number.isInteger(trashRetentionInDays) ||
-                trashRetentionInDays < 0
-            )
-                throw new UsageError(
-                    '"--trash-days" has to be a non negative integer.'
-                )
-
-            const contentKey = await getContentKey(vaultPath)
             const dryRun = Boolean(values['dry-run'])
-            const result = await synchronize({
-                dryRun,
-                excludes: isExcluded,
-                key: contentKey,
-                onAction: (action) => {
-                    const description = describeAction(action)
-                    if (description)
-                        output.log(description)
-                },
-                plainPath,
-                trashRetentionInDays,
-                vaultPath
-            })
-            contentKey.fill(0)
+            let failed = false
+            for (const pair of pairs) {
+                if (isNested(pair.plaintext, pair.vault))
+                    throw new UsageError(
+                        'Plaintext directory and vault must not be located ' +
+                        'inside each other.'
+                    )
+                if (pairs.length > 1)
+                    output.log(`Pair "${pair.name}":`)
 
-            if (result.warning)
-                output.error(result.warning)
-            for (const {path, reason} of result.failed)
-                output.error(`Failed "${path}": ${reason}`)
+                const contentKey = await getContentKey(
+                    pair.vault, parameters.length === 2 ? undefined : pair
+                )
+                try {
+                    const result = await synchronizePair(
+                        pair, contentKey, output.log, dryRun
+                    )
+                    output.log(result.summary)
+                    failed ||= result.failed
+                } finally {
+                    contentKey.fill(0)
+                }
+            }
 
-            const changes = result.actions.filter((action) =>
-                !['forget', 'record', 'skip'].includes(action.type)
-            ).length
-            output.log(
-                `${dryRun ? 'Would apply' : 'Applied'} ` +
-                `${String(changes - result.failed.length)} changes` +
-                (result.failed.length > 0 ?
-                    `, ${String(result.failed.length)} failed` :
-                    '') +
-                '.'
+            return failed ? EXIT_CODES.error : 0
+        }
+        case 'pair': {
+            const [subcommand, ...pairParameters] = parameters
+            const settings = await loadSettings()
+
+            if (subcommand === 'list' && pairParameters.length === 0) {
+                const names = Object.keys(settings.pairs)
+                if (names.length === 0)
+                    output.log('No pairs configured.')
+                for (const name of names) {
+                    const pair = resolvePair(settings, name)
+                    output.log(
+                        `${name}:\n` +
+                        `    plaintext: ${pair.plaintext}\n` +
+                        `    vault:     ${pair.vault}\n` +
+                        '    interval:  ' +
+                        `${String(pair.intervalInMilliseconds / 1000)}s\n` +
+                        '    password:  ' +
+                        `${JSON.stringify(pair.password)}\n` +
+                        `    trash:     ${String(pair.trashDays)} days\n` +
+                        `    excludes:  ${pair.excludes.join(' ')}`
+                    )
+                }
+
+                return 0
+            }
+
+            if (subcommand === 'remove' && pairParameters.length === 1) {
+                const [name] = pairParameters
+                const pair = resolvePair(settings, name)
+
+                delete settings.pairs[name]
+                await saveSettings(settings)
+
+                if (pair.password === 'keychain')
+                    try {
+                        await getKeychain().delete(name)
+                    } catch (error) {
+                        output.error(
+                            'Could not remove the password from the ' +
+                            `keychain: ${(error as Error).message}`
+                        )
+                    }
+
+                output.log(`Removed pair "${name}".`)
+
+                return 0
+            }
+
+            if (subcommand === 'add' && pairParameters.length === 3) {
+                const [name, plaintextPath, vaultPath] = pairParameters
+                if (!PAIR_NAME_PATTERN.test(name))
+                    throw new UsageError(
+                        `Invalid pair name "${name}" (letters, digits, ` +
+                        '".", "_" and "-" only).'
+                    )
+                if (Object.prototype.hasOwnProperty.call(settings.pairs, name))
+                    throw new UsageError(`Pair "${name}" already exists.`)
+
+                const plaintext = resolve(plaintextPath)
+                const vault = resolve(vaultPath)
+                if (isNested(plaintext, vault))
+                    throw new UsageError(
+                        'Plaintext directory and vault must not be located ' +
+                        'inside each other.'
+                    )
+                if (values.interval !== undefined)
+                    parseInterval(values.interval)
+
+                const password: PasswordSource = values.passfile ?
+                    {file: resolve(values.passfile)} :
+                    values.extpass ?
+                        {command: values.extpass} :
+                        validatePasswordSource(values.password ?? 'keychain')
+
+                // Verify the password before anything gets saved.
+                const configuration = await loadConfiguration(vault)
+                if (password !== 'prompt' && password !== 'environment') {
+                    const givenPassword = password === 'keychain' ?
+                        await getPassword({}) :
+                        await getPairPassword(password, name, getKeychain())
+                    ;(await unlockMasterKey(
+                        configuration, Buffer.from(givenPassword)
+                    )).fill(0)
+
+                    if (password === 'keychain')
+                        await getKeychain().store(name, givenPassword)
+                }
+
+                settings.pairs[name] = {
+                    ...(values.exclude ? {excludes: values.exclude} : {}),
+                    ...(values.interval ? {interval: values.interval} : {}),
+                    password,
+                    plaintext,
+                    ...(values['trash-days'] === undefined ?
+                        {} :
+                        {trashDays: parseTrashDays()}),
+                    vault
+                }
+                // Validates the complete pair before saving.
+                resolvePair(settings, name)
+                await saveSettings(settings)
+
+                output.log(`Added pair "${name}".`)
+
+                return 0
+            }
+
+            throw new UsageError(
+                'Command "pair" expects: add <name> <plaintext> <vault>, ' +
+                'remove <name> or list'
             )
+        }
+        case 'daemon': {
+            const pairs = await getPairs(parameters)
+            for (const pair of pairs)
+                if (isNested(pair.plaintext, pair.vault))
+                    throw new UsageError(
+                        `Pair "${pair.name}": plaintext directory and vault ` +
+                        'must not be located inside each other.'
+                    )
 
-            return result.failed.length > 0 ||
-                result.actions.some((action) => action.type === 'skip') ?
-                EXIT_CODES.error :
-                0
+            // Unlock everything first so wrong passwords stop the start.
+            const contentKeys = new Map<string, Buffer>()
+            for (const pair of pairs)
+                contentKeys.set(
+                    pair.name, await getContentKey(pair.vault, pair)
+                )
+
+            const abortController = new AbortController()
+            const stop = () => {
+                abortController.abort()
+            }
+            const signal = givenDependencies.signal ?? abortController.signal
+            if (!givenDependencies.signal)
+                for (const name of ['SIGINT', 'SIGTERM'] as const)
+                    process.once(name, stop)
+
+            const log = (text: string) => {
+                output.log(`${new Date().toISOString()} ${text}`)
+            }
+            try {
+                await runDaemon({
+                    log,
+                    pairs,
+                    signal,
+                    synchronizePair: async (pair) => {
+                        const result = await synchronizePair(
+                            pair,
+                            contentKeys.get(pair.name) as Buffer,
+                            (text) => {
+                                log(`"${pair.name}": ${text}`)
+                            }
+                        )
+
+                        return result.changes > 0 || result.failed ?
+                            result.summary :
+                            null
+                    }
+                })
+            } finally {
+                for (const name of ['SIGINT', 'SIGTERM'] as const)
+                    process.removeListener(name, stop)
+                for (const key of contentKeys.values())
+                    key.fill(0)
+            }
+
+            return 0
+        }
+        case 'service': {
+            const [subcommand] = parameters
+            if (
+                parameters.length !== 1 ||
+                !['install', 'status', 'uninstall'].includes(subcommand)
+            )
+                throw new UsageError(
+                    'Command "service" expects: install, uninstall or status'
+                )
+
+            const service = givenDependencies.service ?? createService()
+            if (subcommand === 'install') {
+                const pairs = await getPairs([])
+                const interactive = pairs.filter(({password}) =>
+                    password === 'prompt'
+                )
+                if (interactive.length > 0)
+                    throw new UsageError(
+                        'A service can not ask for passwords, pairs ' +
+                        interactive.map(({name}) => `"${name}"`).join(', ') +
+                        ' need another password source.'
+                    )
+            }
+
+            output.log(await service[
+                subcommand as 'install' | 'status' | 'uninstall'
+            ]())
+
+            return 0
         }
         default:
             throw new UsageError(`Unknown command "${command}".`)

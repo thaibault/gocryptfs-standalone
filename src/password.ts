@@ -19,6 +19,9 @@
 // region imports
 import {spawn} from 'child_process'
 import {readFile} from 'fs/promises'
+
+import type {Keychain} from './keychain'
+import type {PasswordSource} from './settings'
 // endregion
 export const PASSWORD_ENVIRONMENT_VARIABLE_NAME = 'GOCRYPTFS_PASSWORD'
 
@@ -165,4 +168,47 @@ export const getPassword = async (
         throw new Error('Passwords do not match.')
 
     return password
+}
+/**
+ * Determines the password of a configured pair from its source.
+ * @param source - Configured password source.
+ * @param name - Name of the pair.
+ * @param keychain - Credential store to use for "keychain".
+ * @param environment - Environment variables.
+ * @param prompt - Interactive prompt to use for "prompt".
+ * @returns Password.
+ */
+export const getPairPassword = async (
+    source: PasswordSource,
+    name: string,
+    keychain: Keychain,
+    environment: NodeJS.ProcessEnv = process.env,
+    prompt: (question: string) => Promise<string> = promptHidden
+): Promise<string> => {
+    if (source === 'keychain')
+        return keychain.load(name)
+    if (source === 'environment') {
+        const password = environment[PASSWORD_ENVIRONMENT_VARIABLE_NAME]
+        if (!password)
+            throw new Error(
+                `Pair "${name}" expects its password in ` +
+                `"${PASSWORD_ENVIRONMENT_VARIABLE_NAME}".`
+            )
+
+        return password
+    }
+    if (source === 'prompt') {
+        const password = await prompt(`Password of "${name}": `)
+        if (password === '')
+            throw new Error('Password is empty.')
+
+        return password
+    }
+    if ('file' in source)
+        return getFirstLine(
+            await readFile(source.file, {encoding: 'utf-8'}),
+            `file "${source.file}"`
+        )
+
+    return runExternalProgram(source.command)
 }

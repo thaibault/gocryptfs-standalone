@@ -22,6 +22,9 @@ import {afterAll, beforeAll, describe, expect, test} from '@jest/globals'
 
 import type {Output} from '../cli'
 import {EXIT_CODES, isNested, run} from '../cli'
+import {initializeVault} from '../configuration'
+import type {Keychain} from '../keychain'
+import type {Service} from '../service'
 import {
     PLAIN_FIXTURE_PATH,
     VAULT_FIXTURE_MASTER_KEY,
@@ -221,5 +224,129 @@ describe('cli', () => {
         )).toStrictEqual(EXIT_CODES.wrongPassword)
         expect(result.errors)
             .toStrictEqual(['Master key does not match the vault content.'])
+    })
+    describe('configured pairs', () => {
+        const passwords = new Map<string, string>()
+        const keychain: Keychain = {
+            delete: (name) => {
+                passwords.delete(name)
+
+                return Promise.resolve()
+            },
+            load: (name) => Promise.resolve(passwords.get(name) ?? ''),
+            store: (name, password) => {
+                passwords.set(name, password)
+
+                return Promise.resolve()
+            }
+        }
+        const serviceCalls: Array<string> = []
+        const service: Service = {
+            install: () => Promise.resolve(String(serviceCalls.push('install'))),
+            status: () => Promise.resolve(String(serviceCalls.push('status'))),
+            uninstall: () =>
+                Promise.resolve(String(serviceCalls.push('uninstall')))
+        }
+        const runWithPairs = (argv: Array<string>, signal?: AbortSignal) => {
+            const {output, result} = createOutput()
+
+            return run(argv, output, {keychain, service, signal})
+                .then((code) => ({code, ...result}))
+        }
+
+        let vault = ''
+        let plain = ''
+        beforeAll(async () => {
+            process.env.GOCRYPTFS_STANDALONE_CONFIGURATION_DIRECTORY =
+                join(temporaryDirectory, 'configuration')
+            vault = join(temporaryDirectory, 'pair-vault')
+            plain = join(temporaryDirectory, 'pair-plain')
+            await initializeVault(vault, Buffer.from('secret'), 10)
+        })
+        afterAll(() => {
+            delete process.env.GOCRYPTFS_STANDALONE_CONFIGURATION_DIRECTORY
+            delete process.env.GOCRYPTFS_PASSWORD
+        })
+
+        test('pair add, list, sync, daemon and remove', async () => {
+            expect((await runWithPairs(['sync'])).errors[0])
+                .toContain('No pairs configured')
+
+            // Wrong passwords are never stored.
+            process.env.GOCRYPTFS_PASSWORD = 'wrong'
+            expect((await runWithPairs(['pair', 'add', 'docs', plain, vault])).code)
+                .toStrictEqual(EXIT_CODES.wrongPassword)
+            expect(passwords.size).toStrictEqual(0)
+
+            process.env.GOCRYPTFS_PASSWORD = 'secret'
+            expect((await runWithPairs([
+                'pair', 'add', 'docs', plain, vault, '--interval', '1h',
+                '--exclude', '*.tmp'
+            ])).code).toStrictEqual(0)
+            delete process.env.GOCRYPTFS_PASSWORD
+            expect(passwords.get('docs')).toStrictEqual('secret')
+
+            expect((await runWithPairs(['pair', 'add', 'docs', plain, vault]))
+                .errors).toStrictEqual(['Pair "docs" already exists.'])
+            expect((await runWithPairs(['pair', 'add', 'a b', plain, vault]))
+                .code).toStrictEqual(EXIT_CODES.usage)
+
+            const listing = await runWithPairs(['pair', 'list'])
+            expect(listing.logs[0]).toContain('interval:  3600s')
+            expect(listing.logs[0]).toContain('password:  "keychain"')
+            expect(listing.logs[0]).toContain('.DS_Store')
+            expect(listing.logs[0]).toContain('*.tmp')
+
+            // Password comes from the keychain now.
+            await writeFile(join(temporaryDirectory, 'note.txt'), 'note')
+            await mkdir(plain, {recursive: true})
+            await writeFile(join(plain, 'a.txt'), 'a')
+            await writeFile(join(plain, 'ignored.tmp'), 'tmp')
+            const synchronisation = await runWithPairs(['sync', 'docs'])
+            expect(synchronisation.code).toStrictEqual(0)
+            expect(synchronisation.logs)
+                .toStrictEqual(['encrypt a.txt', 'Applied 1 changes.'])
+
+            expect((await runWithPairs(['sync', 'unknown'])).errors[0])
+                .toContain('Unknown pair "unknown"')
+
+            // The daemon runs until stopped.
+            const controller = new AbortController()
+            await writeFile(join(plain, 'b.txt'), 'b')
+            setTimeout(() => {
+                controller.abort()
+            }, 200)
+            const daemon = await runWithPairs(['daemon'], controller.signal)
+            expect(daemon.code).toStrictEqual(0)
+            expect(daemon.logs.map((line) => line.replace(/^\S+ /, '')))
+                .toStrictEqual([
+                    'Started synchronizing "docs" every 3600s.',
+                    '"docs": encrypt b.txt',
+                    '"docs": Applied 1 changes.',
+                    'Stopped.'
+                ])
+
+            expect((await runWithPairs(['service', 'install'])).code)
+                .toStrictEqual(0)
+            expect((await runWithPairs(['service', 'unknown'])).code)
+                .toStrictEqual(EXIT_CODES.usage)
+
+            expect((await runWithPairs(['pair', 'remove', 'docs'])).code)
+                .toStrictEqual(0)
+            expect(passwords.size).toStrictEqual(0)
+            expect((await runWithPairs(['pair', 'list'])).logs)
+                .toStrictEqual(['No pairs configured.'])
+        })
+        test('service refuses pairs needing interactive passwords', async () => {
+            expect((await runWithPairs([
+                'pair', 'add', 'interactive', plain, vault, '--password', 'prompt'
+            ])).code).toStrictEqual(0)
+
+            const installation = await runWithPairs(['service', 'install'])
+            expect(installation.code).toStrictEqual(EXIT_CODES.usage)
+            expect(installation.errors[0]).toContain('"interactive"')
+
+            await runWithPairs(['pair', 'remove', 'interactive'])
+        })
     })
 })
