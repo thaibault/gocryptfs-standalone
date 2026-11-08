@@ -266,6 +266,15 @@ const test = async (executable: string): Promise<void> => {
         run(['decrypt', path('vault'), path('check'), ...password])
         await assertSameTree(plain, path('check'), 'second sync')
 
+        step('separate configuration file')
+        const configuration = path('separate.conf')
+        run([
+            'init', path('separate-vault'), '--scryptn', '10',
+            '--config', configuration, ...password
+        ])
+        run(['info', path('separate-vault')], 1)
+        run(['info', path('separate-vault'), '--config', configuration])
+
         step('configured pair')
         run(['pair', 'add', 'smoke', plain, path('vault'), ...password])
         if (!run(['sync', 'smoke']).stderr.includes('Applied 0 changes.'))

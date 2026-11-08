@@ -26,7 +26,7 @@ import {basename, dirname, join, relative, sep} from 'path'
 import {Readable} from 'stream'
 import {pipeline} from 'stream/promises'
 
-import {CONFIGURATION_FILE_NAME} from './configuration'
+import {CONFIGURATION_FILE_NAMES} from './configuration'
 import {decryptFileContent, encryptFileContent} from './content'
 import {excludeNothing} from './exclude'
 import type {ExcludeMatcher} from './exclude'
@@ -120,7 +120,7 @@ export const encryptFile = (
  * @returns Indicates whether to ignore the path.
  */
 export const isInternalPath = (relativePath: string): boolean =>
-    relativePath === CONFIGURATION_FILE_NAME ||
+    CONFIGURATION_FILE_NAMES.includes(relativePath) ||
     isTemporaryPath(relativePath)
 /**
  * Decides whether given path is a leftover of an interrupted run.
@@ -270,10 +270,10 @@ export const encryptTree = (
         (relativePath, isDirectory) => {
             if (isExcluded(relativePath, isDirectory))
                 return false
-            if (relativePath === CONFIGURATION_FILE_NAME)
+            if (CONFIGURATION_FILE_NAMES.includes(relativePath))
                 return (
-                    `The name "${CONFIGURATION_FILE_NAME}" is reserved in ` +
-                    'the vault root.'
+                    `The name "${relativePath}" is reserved in the vault ` +
+                    'root.'
                 )
 
             return !isTemporaryPath(relativePath)
