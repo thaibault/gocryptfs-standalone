@@ -165,7 +165,19 @@ export const findConfigurationFile = async (
 
             return path
         } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+            const {code} = error as NodeJS.ErrnoException
+            /*
+                NOTE: A mounted plaintext names vault denies any access to
+                "gocryptfs.conf" in its root.
+            */
+            if (code === 'EPERM' && name === CONFIGURATION_FILE_NAME)
+                throw new Error(
+                    `"${vaultPath}" seems to be the decrypted view of a ` +
+                    'mounted vault (access to "gocryptfs.conf" is denied), ' +
+                    'give the encrypted directory instead.',
+                    {cause: error}
+                )
+            if (code !== 'ENOENT')
                 throw error
         }
     }

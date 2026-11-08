@@ -28,9 +28,7 @@
   },
   "type": "module",
   "main": "dist/index.js",
-  "bin": {
-    "gocryptfs-standalone": "dist/index.js"
-  },
+  "bin": "dist/index.js",
   "files": [
     "dist/index.js"
   ],
@@ -49,6 +47,7 @@
     "test:coverage": "weboptimizer test:coverage",
     "test:coverage:report": "weboptimizer test:coverage:report",
     "test:standalone": "node standalone.ts test",
+    "update:documentation": "web-documentation",
     "watch": "weboptimizer build --watch"
   },
   "devDependencies": {
@@ -62,11 +61,12 @@
     "@typescript-eslint/parser": "^8.72.1",
     "eslint": "^10.14.0",
     "eslint-config-google": "^0.14.0",
-    "eslint-plugin-jsdoc": "^65.4.2",
+    "eslint-plugin-jsdoc": "^65.4.5",
     "jest": "^30.5.2",
     "jsdoc": "^4.0.5",
     "typescript-eslint": "^8.72.1",
-    "weboptimizer": "^4.0.103"
+    "web-documentation": "^1.0.74",
+    "weboptimizer": "^4.0.107"
   },
   "resolutions": {
     "colors": "1.4.0",
