@@ -87,7 +87,7 @@ overwritten, nothing gets deleted. Modification times, permissions and
 symbolic links are carried over. Vaults created with `init` can be mounted
 with gocryptfs (`-init -plaintextnames` compatible).
 
-### Synchronisation
+### Synchronization
 
 `sync` keeps a plaintext directory and a vault in sync in both directions.
 After each run the state of both sides is remembered (a json file in the
@@ -127,7 +127,7 @@ gitignore conventions:
 Supported globs: `*`, `**`, `?`, `[...]` and `{a,b}`. Matching is case
 insensitive on macOS and Windows.
 
-### Configured pairs and background synchronisation
+### Configured pairs and background synchronization
 
 Pairs of a plaintext directory and a vault can be configured once and then
 be synchronized by name, all at once or periodically in the background:
