@@ -218,6 +218,40 @@ describe('cli', () => {
         // Invalid parameters never leave a directory behind.
         expect(existsSync(invalid)).toStrictEqual(false)
     })
+    test('separate configuration file', async () => {
+        const vault = join(temporaryDirectory, 'separate-vault')
+        const configuration = join(temporaryDirectory, 'separate.conf')
+        const plain = join(temporaryDirectory, 'separate-plain')
+        const options = ['--config', configuration, '--passfile', passwordFile]
+
+        expect(await run(
+            ['init', vault, '--scryptn', '10', ...options],
+            createOutput().output
+        )).toStrictEqual(0)
+        expect(existsSync(join(vault, 'gocryptfs.conf'))).toStrictEqual(false)
+
+        const missing = createOutput()
+        expect(await run(['info', vault], missing.output))
+            .toStrictEqual(EXIT_CODES.error)
+        expect(missing.result.errors[0]).toContain('No configuration file')
+        expect(await run(
+            ['info', vault, '--config', configuration], createOutput().output
+        )).toStrictEqual(0)
+
+        expect(await run(
+            ['encrypt', PLAIN_FIXTURE_PATH, vault, ...options],
+            createOutput().output
+        )).toStrictEqual(0)
+        const synchronization = createOutput()
+        expect(await run(
+            ['sync', plain, vault, ...options], synchronization.output
+        )).toStrictEqual(0)
+        expect(synchronization.result.logs.at(-1))
+            .toStrictEqual('Applied 10 changes.')
+        expect(await readFile(join(plain, 'hello.txt'))).toStrictEqual(
+            await readFile(join(PLAIN_FIXTURE_PATH, 'hello.txt'))
+        )
+    })
     test('encrypt refuses a wrong master key', async () => {
         const {output, result} = createOutput()
 
@@ -345,6 +379,31 @@ describe('cli', () => {
             expect(passwords.size).toStrictEqual(0)
             expect((await runWithPairs(['pair', 'list'])).logs)
                 .toStrictEqual(['No pairs configured.'])
+        })
+        test('pair with a separate configuration file', async () => {
+            const separateVault = join(temporaryDirectory, 'pair-separate-vault')
+            const configuration = join(temporaryDirectory, 'pair-separate.conf')
+            await initializeVault(
+                separateVault, Buffer.from('secret'), 10, configuration
+            )
+
+            process.env.GOCRYPTFS_PASSWORD = 'secret'
+            expect((await runWithPairs([
+                'pair', 'add', 'separate', plain, separateVault,
+                '--config', configuration, '--password', 'environment'
+            ])).code).toStrictEqual(0)
+            expect((await runWithPairs(['pair', 'list'])).logs[0])
+                .toContain(`config:    ${configuration}`)
+            expect((await runWithPairs(['sync', 'separate'])).code)
+                .toStrictEqual(0)
+
+            // Configured pairs bring their own configuration file.
+            expect((await runWithPairs(
+                ['sync', 'separate', '--config', configuration]
+            )).code).toStrictEqual(EXIT_CODES.usage)
+
+            await runWithPairs(['pair', 'remove', 'separate'])
+            delete process.env.GOCRYPTFS_PASSWORD
         })
         test('service refuses pairs needing interactive passwords', async () => {
             expect((await runWithPairs([

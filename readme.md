@@ -82,6 +82,12 @@ gocryptfs-standalone sync <plaintext> <vault> [--dry-run] [--trash-days 30]
 
 `decrypt`, `encrypt` and `sync` accept `--exclude <pattern>` (repeatable).
 
+The vault's configuration file is looked up as `gocryptfs.conf` and then as
+`.gocryptfs.conf` in the vault directory (`init` creates `gocryptfs.conf`).
+Every command accepts `--config <path>` to use a configuration file located
+elsewhere, like gocryptfs' `-config` option (for example to keep it out of
+the cloud). Both names are reserved in the vault root and never synchronized.
+
 `decrypt` and `encrypt` work one way: existing files on the target side get
 overwritten, nothing gets deleted. Modification times, permissions and
 symbolic links are carried over. Vaults created with `init` can be mounted
@@ -162,13 +168,16 @@ and can be edited by hand as well:
             "interval": "5m",
             "excludes": ["*.tmp", "build/"],
             "trashDays": 7,
-            "password": "keychain"
+            "password": "keychain",
+            "config": "/home/me/vault.conf"
         }
     }
 }
 ```
 
-A pair's excludes are added to the default ones. Intervals take seconds,
+A pair's excludes are added to the default ones. `config` is optional and
+only needed for a configuration file outside of the vault (`pair add
+--config`). Intervals take seconds,
 minutes or hours (`30s`, `10m`, `2h`, at least 10 seconds). Password sources:
 
 | Source | Meaning |

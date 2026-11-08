@@ -14,7 +14,9 @@
     endregion
 */
 // region imports
-import {mkdir, mkdtemp, readFile, rm, stat, writeFile} from 'fs/promises'
+import {
+    copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile
+} from 'fs/promises'
 import {tmpdir} from 'os'
 import {join} from 'path'
 
@@ -167,6 +169,39 @@ describe('configuration', () => {
             await expect(
                 initializeVault(otherPath, Buffer.from('secret'), 10)
             ).rejects.toThrow('is not empty')
+        })
+        test('initializeVault with a separate configuration file', async () => {
+            const vaultPath = join(temporaryDirectory, 'separate-vault')
+            const configurationPath =
+                join(temporaryDirectory, 'separate.conf')
+            const masterKey = await initializeVault(
+                vaultPath, Buffer.from('secret'), 10, configurationPath
+            )
+
+            expect(await readdir(vaultPath)).toStrictEqual([])
+            await expect(loadConfiguration(vaultPath))
+                .rejects.toThrow('"--config"')
+            expect(await unlockMasterKey(
+                await loadConfiguration(vaultPath, configurationPath),
+                Buffer.from('secret')
+            )).toStrictEqual(masterKey)
+        })
+        test('loadConfiguration finds a hidden configuration file', async () => {
+            const vaultPath = join(temporaryDirectory, 'hidden-vault')
+            await mkdir(vaultPath)
+            await copyFile(
+                join(VAULT_FIXTURE_PATH, 'gocryptfs.conf'),
+                join(vaultPath, '.gocryptfs.conf')
+            )
+
+            expect(await unlockMasterKey(
+                await loadConfiguration(vaultPath),
+                Buffer.from(VAULT_FIXTURE_PASSWORD)
+            )).toStrictEqual(Buffer.from(VAULT_FIXTURE_MASTER_KEY, 'hex'))
+
+            // The visible one takes precedence.
+            await writeFile(join(vaultPath, 'gocryptfs.conf'), '{}')
+            await expect(loadConfiguration(vaultPath)).rejects.toThrow()
         })
         test('formatMasterKey', () => {
             expect(formatMasterKey(

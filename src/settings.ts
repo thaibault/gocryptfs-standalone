@@ -47,6 +47,8 @@ export type PasswordSource =
     'environment' | 'keychain' | 'prompt' | {command: string} | {file: string}
 
 export interface PairSettings {
+    // Configuration file located outside of the vault directory.
+    config?: string
     excludes?: Array<string>
     interval?: number | string
     password?: PasswordSource
@@ -65,6 +67,7 @@ export interface Settings {
 }
 // A pair with all defaults applied.
 export interface ResolvedPair {
+    config?: string
     excludes: Array<string>
     intervalInMilliseconds: number
     name: string
@@ -151,6 +154,12 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
             `Pair "${name}" needs a "plaintext" and a "vault" path.`
         )
 
+    if (
+        pair.config !== undefined &&
+        (typeof pair.config !== 'string' || pair.config === '')
+    )
+        throw new Error(`Pair "${name}": "config" has to be a path.`)
+
     const trashDays = pair.trashDays ?? settings.defaults.trashDays
     if (!Number.isInteger(trashDays) || trashDays < 0)
         throw new Error(
@@ -158,6 +167,7 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
         )
 
     return {
+        ...(pair.config === undefined ? {} : {config: pair.config}),
         excludes: [...settings.defaults.excludes, ...pair.excludes ?? []],
         intervalInMilliseconds:
             parseInterval(pair.interval ?? settings.defaults.interval),

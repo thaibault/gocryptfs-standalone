@@ -18,7 +18,9 @@
 */
 // region imports
 import {randomBytes, scrypt as scryptCallback} from 'crypto'
-import {mkdir, readdir, readFile, rename, rm, writeFile} from 'fs/promises'
+import {
+    access, mkdir, readdir, readFile, rename, rm, writeFile
+} from 'fs/promises'
 import {join} from 'path'
 import {promisify} from 'util'
 
@@ -36,7 +38,9 @@ const scrypt = promisify(scryptCallback) as (
     options: {N: number, r: number, p: number, maxmem: number}
 ) => Promise<Buffer>
 
-export const CONFIGURATION_FILE_NAME = 'gocryptfs.conf'
+// Looked up in this order in the vault root, the first one gets created.
+export const CONFIGURATION_FILE_NAMES = ['gocryptfs.conf', '.gocryptfs.conf']
+export const CONFIGURATION_FILE_NAME = CONFIGURATION_FILE_NAMES[0]
 export const SUPPORTED_VERSION = 2
 /*
     NOTE: Exactly the feature flag set "gocryptfs -init -plaintextnames"
@@ -147,15 +151,44 @@ export const parseConfiguration = (content: string): VaultConfiguration => {
     }
 }
 /**
+ * Finds the configuration file in given vault directory.
+ * @param vaultPath - Encrypted (cipher) directory.
+ * @returns Path of the first existing configuration file.
+ */
+export const findConfigurationFile = async (
+    vaultPath: string
+): Promise<string> => {
+    for (const name of CONFIGURATION_FILE_NAMES) {
+        const path = join(vaultPath, name)
+        try {
+            await access(path)
+
+            return path
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+                throw error
+        }
+    }
+
+    throw new Error(
+        `No configuration file (${CONFIGURATION_FILE_NAMES.map((name) =>
+            `"${name}"`).join(' or ')}) found in "${vaultPath}", give its ` +
+        'path via "--config" if it is located elsewhere.'
+    )
+}
+/**
  * Loads and validates the configuration file of given vault directory.
  * @param vaultPath - Encrypted (cipher) directory.
+ * @param configurationPath - Explicit configuration file path (looked up in
+ * the vault directory by default).
  * @returns Parsed configuration.
  */
 export const loadConfiguration = async (
-    vaultPath: string
+    vaultPath: string, configurationPath?: string
 ): Promise<VaultConfiguration> =>
     parseConfiguration(await readFile(
-        join(vaultPath, CONFIGURATION_FILE_NAME), {encoding: 'utf-8'}
+        configurationPath ?? await findConfigurationFile(vaultPath),
+        {encoding: 'utf-8'}
     ))
 /**
  * Derives the key encryption key from given password and scrypt parameters.
@@ -296,10 +329,15 @@ export const createConfiguration = async (
  * @param vaultPath - Directory to create the vault in.
  * @param password - Vault password.
  * @param scryptLogN - Binary logarithm of the scrypt cost parameter N.
+ * @param filePath - Path of the configuration file to create (in the vault
+ * directory by default).
  * @returns The new vault's master key.
  */
 export const initializeVault = async (
-    vaultPath: string, password: Buffer, scryptLogN?: number
+    vaultPath: string,
+    password: Buffer,
+    scryptLogN?: number,
+    filePath = join(vaultPath, CONFIGURATION_FILE_NAME)
 ): Promise<Buffer> => {
     // NOTE: Validates the parameters before anything gets created.
     const {configuration, masterKey} =
@@ -309,7 +347,6 @@ export const initializeVault = async (
     if ((await readdir(vaultPath)).length > 0)
         throw new Error(`Directory "${vaultPath}" is not empty.`)
 
-    const filePath = join(vaultPath, CONFIGURATION_FILE_NAME)
     const temporaryFilePath = `${filePath}.tmp`
     try {
         // NOTE: Read only like gocryptfs does, it should never be modified.

@@ -24,7 +24,7 @@ import {
 import {hostname} from 'os'
 import {dirname, join, posix, resolve} from 'path'
 
-import {CONFIGURATION_FILE_NAME} from './configuration'
+import {CONFIGURATION_FILE_NAMES} from './configuration'
 import {decryptFileContent, encryptFileContent} from './content'
 import {excludeNothing} from './exclude'
 import type {ExcludeMatcher} from './exclude'
@@ -126,11 +126,10 @@ export const scan = async (
                 isExcluded(path, entry.isDirectory())
             )
                 continue
-            if (side === 'plain' && path === CONFIGURATION_FILE_NAME) {
+            if (side === 'plain' && CONFIGURATION_FILE_NAMES.includes(path)) {
                 result.skipped.push({
                     path,
-                    reason: `The name "${CONFIGURATION_FILE_NAME}" is ` +
-                        'reserved in the vault root.'
+                    reason: `The name "${path}" is reserved in the vault root.`
                 })
 
                 continue

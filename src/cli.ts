@@ -93,6 +93,9 @@ Commands:
                                  (per user, no admin rights needed).
 
 Options:
+  --config <path>                Configuration file of the vault (default:
+                                 "gocryptfs.conf" or ".gocryptfs.conf" in
+                                 the vault, "init" creates the former).
   --passfile <path>              Read the password from the file's first line.
   --extpass <command>            Read the password from a command's output.
   --masterkey <hex>              Use the master key instead of a password.
@@ -245,6 +248,7 @@ export const run = async (
             allowPositionals: true,
             args: argv,
             options: {
+                config: {type: 'string'},
                 extpass: {type: 'string'},
                 help: {short: 'h', type: 'boolean'},
                 masterkey: {type: 'string'},
@@ -302,9 +306,12 @@ export const run = async (
             over the one configured for a pair.
         */
         const getContentKey = async (
-            vaultPath: string, pair?: ResolvedPair
+            vaultPath: string,
+            pair?: ResolvedPair,
+            configurationPath = pair ? pair.config : values.config
         ): Promise<Buffer> => {
-            const configuration = await loadConfiguration(vaultPath)
+            const configuration =
+                await loadConfiguration(vaultPath, configurationPath)
             const masterKey = values.masterkey ?
                 parseMasterKey(values.masterkey) :
                 await unlockMasterKey(
@@ -409,6 +416,11 @@ export const run = async (
                     'No pairs configured, see "pair add" or give a ' +
                     'plaintext directory and a vault.'
                 )
+            if (values.config !== undefined)
+                throw new UsageError(
+                    '"--config" applies to a given vault only, configure ' +
+                    '"config" of the pair instead.'
+                )
 
             const trashDays = parseTrashDays()
 
@@ -417,6 +429,9 @@ export const run = async (
 
                 return {
                     ...pair,
+                    ...(pair.config === undefined ?
+                        {} :
+                        {config: resolve(pair.config)}),
                     excludes: [...pair.excludes, ...values.exclude ?? []],
                     plaintext: resolve(pair.plaintext),
                     trashDays: trashDays ?? pair.trashDays,
@@ -438,7 +453,8 @@ export const run = async (
                 await getPasswordBuffer(true),
                 values.scryptn === undefined ?
                     undefined :
-                    Number(values.scryptn)
+                    Number(values.scryptn),
+                values.config
             )
             output.log(`Created vault in "${parameters[0]}".`)
             if (output.isTerminal)
@@ -455,7 +471,8 @@ export const run = async (
         }
         case 'info': {
             expectParameters(['vault'])
-            const configuration = await loadConfiguration(parameters[0])
+            const configuration =
+                await loadConfiguration(parameters[0], values.config)
             output.log(
                 `Creator:       ${configuration.creator}\n` +
                     `Version:       ${String(configuration.version)}\n` +
@@ -525,6 +542,9 @@ export const run = async (
                     resolve(path)
                 )
                 pairs = [{
+                    ...(values.config === undefined ?
+                        {} :
+                        {config: values.config}),
                     excludes: values.exclude ?? [],
                     intervalInMilliseconds: 0,
                     name: 'command line',
@@ -553,7 +573,9 @@ export const run = async (
                     output.log(`Pair "${pair.name}":`)
 
                 const contentKey = await getContentKey(
-                    pair.vault, parameters.length === 2 ? undefined : pair
+                    pair.vault,
+                    parameters.length === 2 ? undefined : pair,
+                    pair.config
                 )
                 try {
                     const result = await synchronizePair(
@@ -582,6 +604,9 @@ export const run = async (
                         `${name}:\n` +
                         `    plaintext: ${pair.plaintext}\n` +
                         `    vault:     ${pair.vault}\n` +
+                        (pair.config === undefined ?
+                            '' :
+                            `    config:    ${pair.config}\n`) +
                         '    interval:  ' +
                         `${String(pair.intervalInMilliseconds / 1000)}s\n` +
                         '    password:  ' +
@@ -642,8 +667,12 @@ export const run = async (
                         {command: values.extpass} :
                         validatePasswordSource(values.password ?? 'keychain')
 
+                const config = values.config === undefined ?
+                    undefined :
+                    resolve(values.config)
+
                 // Verify the password before anything gets saved.
-                const configuration = await loadConfiguration(vault)
+                const configuration = await loadConfiguration(vault, config)
                 if (password !== 'prompt' && password !== 'environment') {
                     const givenPassword = password === 'keychain' ?
                         await getPassword({}) :
@@ -657,6 +686,7 @@ export const run = async (
                 }
 
                 settings.pairs[name] = {
+                    ...(config === undefined ? {} : {config}),
                     ...(values.exclude ? {excludes: values.exclude} : {}),
                     ...(values.interval ? {interval: values.interval} : {}),
                     password,

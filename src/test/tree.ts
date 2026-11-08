@@ -53,6 +53,7 @@ describe('tree', () => {
 
     test('isInternalPath', () => {
         expect(isInternalPath('gocryptfs.conf')).toStrictEqual(true)
+        expect(isInternalPath('.gocryptfs.conf')).toStrictEqual(true)
         expect(isInternalPath('a/gocryptfs.conf')).toStrictEqual(false)
         expect(isInternalPath('a/.gocryptfs-standalone-1234-b'))
             .toStrictEqual(true)
