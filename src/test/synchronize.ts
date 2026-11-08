@@ -122,7 +122,7 @@ describe('synchronize', () => {
         await rm(root, {force: true, recursive: true})
     })
 
-    test('initial synchronisation merges both sides', async () => {
+    test('initial synchronization merges both sides', async () => {
         await writeCipher('remote/a.txt', 'remote')
         await writePlain('local/b.txt', 'local')
         await mkdir(join(plain, 'empty'))
@@ -250,7 +250,7 @@ describe('synchronize', () => {
         ])
         expect(await readlink(join(vault, 'link'))).toStrictEqual('target')
     })
-    test('a running synchronisation locks the pair', async () => {
+    test('a running synchronization locks the pair', async () => {
         const release = await acquireLock(
             getPairDirectory(plain, vault, configurationDirectory)
         )

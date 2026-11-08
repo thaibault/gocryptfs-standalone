@@ -79,7 +79,7 @@ export const formatConflictDate = (date: Date): string => {
  * Derives a not yet taken conflict copy name for given path.
  * @param path - Relative (posix) path of the conflicting entry.
  * @param host - Name of this machine.
- * @param date - Time of the synchronisation.
+ * @param date - Time of the synchronization.
  * @param isTaken - Checks whether a relative path is already in use.
  * @returns Relative conflict copy path.
  */
@@ -107,12 +107,12 @@ export const getConflictPath = (
 }
 /**
  * Decides how to synchronize both sides based on their current state and
- * the state after the last synchronisation.
+ * the state after the last synchronization.
  * @param plain - Current entries of the plaintext directory.
  * @param cipher - Current entries of the vault.
- * @param state - Entries after the last synchronisation.
+ * @param state - Entries after the last synchronization.
  * @param host - Name of this machine (used for conflict copies).
- * @param date - Time of the synchronisation (used for conflict copies).
+ * @param date - Time of the synchronization (used for conflict copies).
  * @returns Actions sorted in the order to apply them.
  */
 export const createPlan = (

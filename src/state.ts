@@ -24,7 +24,7 @@ import {
 import {homedir} from 'os'
 import {dirname, join} from 'path'
 
-import type {Side, SynchronisationState} from './type'
+import type {Side, SynchronizationState} from './type'
 // endregion
 export const APPLICATION_NAME = 'gocryptfs-standalone'
 export const CONFIGURATION_DIRECTORY_ENVIRONMENT_VARIABLE_NAME =
@@ -94,7 +94,7 @@ export const getPairDirectory = (
  */
 export const createState = (
     plainPath: string, vaultPath: string
-): SynchronisationState => ({
+): SynchronizationState => ({
     entries: {},
     plainPath,
     synchronizedAt: null,
@@ -102,7 +102,7 @@ export const createState = (
     version: 1
 })
 /**
- * Loads the state of the last synchronisation. A missing or unreadable state
+ * Loads the state of the last synchronization. A missing or unreadable state
  * results in an empty one, which only merges both sides and never deletes.
  * @param pairDirectory - Directory of the pair.
  * @param plainPath - Absolute plaintext directory path.
@@ -111,7 +111,7 @@ export const createState = (
  */
 export const loadState = async (
     pairDirectory: string, plainPath: string, vaultPath: string
-): Promise<{state: SynchronisationState, warning?: string}> => {
+): Promise<{state: SynchronizationState, warning?: string}> => {
     let content: string
     try {
         content = await readFile(
@@ -125,7 +125,7 @@ export const loadState = async (
     }
 
     try {
-        const state = JSON.parse(content) as Partial<SynchronisationState>
+        const state = JSON.parse(content) as Partial<SynchronizationState>
         if (
             state.version !== 1 ||
             typeof state.entries !== 'object' ||
@@ -134,11 +134,11 @@ export const loadState = async (
         )
             throw new Error('Unexpected content.')
 
-        return {state: state as SynchronisationState}
+        return {state: state as SynchronizationState}
     } catch {
         return {
             state: createState(plainPath, vaultPath),
-            warning: 'Ignoring unusable synchronisation state, both sides ' +
+            warning: 'Ignoring unusable synchronization state, both sides ' +
                 'get merged without deleting anything.'
         }
     }
@@ -150,7 +150,7 @@ export const loadState = async (
  * @returns Promise resolving when saved.
  */
 export const saveState = async (
-    pairDirectory: string, state: SynchronisationState
+    pairDirectory: string, state: SynchronizationState
 ): Promise<void> => {
     await mkdir(pairDirectory, {recursive: true})
 
@@ -175,7 +175,7 @@ const isRunning = (pid: number): boolean => {
     }
 }
 /**
- * Acquires the lock of given pair so only one synchronisation runs at a time.
+ * Acquires the lock of given pair so only one synchronization runs at a time.
  * Locks of no longer running processes get taken over.
  * @param pairDirectory - Directory of the pair.
  * @returns Function to release the lock.
@@ -198,14 +198,14 @@ export const acquireLock = async (
             const pid = Number(await readFile(filePath, {encoding: 'utf-8'}))
             if (Number.isInteger(pid) && pid > 0 && isRunning(pid))
                 throw new LockedError(
-                    'Another synchronisation of this pair is running ' +
+                    'Another synchronization of this pair is running ' +
                     `(process ${String(pid)}).`
                 )
 
             await rm(filePath, {force: true})
         }
 
-    throw new LockedError('Could not acquire the synchronisation lock.')
+    throw new LockedError('Could not acquire the synchronization lock.')
 }
 /**
  * Moves given path, falling back to copy and delete across file systems.
@@ -229,10 +229,10 @@ export const move = async (source: string, target: string): Promise<void> => {
     }
 }
 /**
- * Determines the trash directory for given side and synchronisation run.
+ * Determines the trash directory for given side and synchronization run.
  * Vault files stay encrypted in the trash.
  * @param pairDirectory - Directory of the pair.
- * @param date - Time of the synchronisation.
+ * @param date - Time of the synchronization.
  * @param side - Side the trashed entries belong to.
  * @returns Absolute directory path.
  */
@@ -247,7 +247,7 @@ export const getTrashDirectory = (
         side === 'plain' ? 'plaintext' : 'vault'
     )
 /**
- * Removes trash of synchronisation runs older than given number of days.
+ * Removes trash of synchronization runs older than given number of days.
  * @param pairDirectory - Directory of the pair.
  * @param retentionInDays - Days to keep trashed entries.
  * @param now - Current time.

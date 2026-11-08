@@ -55,7 +55,7 @@ export const sleep = (
  * own interval until given signal aborts. Runs never overlap, so a slow pair
  * delays the others instead of competing for disk and cpu. Failures are
  * logged and retried in the next interval.
- * @param options - Pairs, synchronisation and logging.
+ * @param options - Pairs, synchronization and logging.
  * @returns Promise resolving after the abort when no run is active anymore.
  */
 export const runDaemon = async (options: DaemonOptions): Promise<void> => {

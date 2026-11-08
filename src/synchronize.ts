@@ -49,10 +49,10 @@ import type {
     Side,
     Snapshot,
     Snapshots,
-    SynchronisationResult
+    SynchronizationResult
 } from './type'
 // endregion
-export interface SynchronisationOptions {
+export interface SynchronizationOptions {
     configurationDirectory?: string
     date?: Date
     dryRun?: boolean
@@ -219,12 +219,12 @@ export const hasSameContent = async (
 }
 /**
  * Synchronizes a plaintext directory with a vault in both directions.
- * @param options - Pair, key and behaviour.
+ * @param options - Pair, key and behavior.
  * @returns Planned (or applied) actions and failures.
  */
 export const synchronize = async (
-    options: SynchronisationOptions
-): Promise<SynchronisationResult & {warning?: string}> => {
+    options: SynchronizationOptions
+): Promise<SynchronizationResult & {warning?: string}> => {
     const {
         dryRun = false,
         excludes = excludeNothing,
@@ -285,7 +285,7 @@ export const synchronize = async (
             ...plannedActions.filter((action) => !excluded.has(action.path))
         ]
 
-        const result: SynchronisationResult & {warning?: string} =
+        const result: SynchronizationResult & {warning?: string} =
             {actions, failed: [], warning}
         if (dryRun) {
             for (const action of actions)
@@ -305,7 +305,7 @@ export const synchronize = async (
             ))
                 throw new Error(
                     `Changed in ${side === 'plain' ? 'plaintext' : 'vault'} ` +
-                    'during synchronisation, it will be retried.'
+                    'during synchronization, it will be retried.'
                 )
         }
 
