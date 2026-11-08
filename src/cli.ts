@@ -181,13 +181,6 @@ export const isNested = (first: string, second: string): boolean =>
     first.startsWith(join(second, '/')) ||
     second.startsWith(join(first, '/'))
 /**
- * Prints a summary of given tree transformation.
- * @param output - Output channels.
- * @param verb - Describes the transformation.
- * @param result - Transformation result.
- * @returns Exit code.
- */
-/**
  * Describes given synchronization action for humans.
  * @param action - Action to describe.
  * @returns Description or null for pure bookkeeping actions.
@@ -218,7 +211,14 @@ export const describeAction = (action: Action): null | string => {
         return null
     }
 }
-const report = (output: Output, verb: string, result: TreeResult): number => {
+/**
+ * Prints a summary of given tree transformation.
+ * @param output - Output channels.
+ * @param verb - Describes the transformation.
+ * @param result - Transformation result.
+ * @returns Exit code.
+ */
+const report =(output: Output, verb: string, result: TreeResult): number => {
     output.log(
         `${verb} ${String(result.files)} files, ` +
         `${String(result.directories)} directories and ` +
