@@ -14,6 +14,7 @@
     endregion
 */
 // region imports
+import {existsSync} from 'fs'
 import {mkdir, mkdtemp, readFile, rm, writeFile} from 'fs/promises'
 import {tmpdir} from 'os'
 import {join} from 'path'
@@ -201,13 +202,21 @@ describe('cli', () => {
         expect(quiet.result.logs.join('')).not.toContain('master key')
 
         expect(await run(
-            ['init', 'any', '--masterkey', VAULT_FIXTURE_MASTER_KEY],
+            [
+                'init',
+                join(temporaryDirectory, 'any'),
+                '--masterkey',
+                VAULT_FIXTURE_MASTER_KEY
+            ],
             createOutput().output
         )).toStrictEqual(EXIT_CODES.usage)
+        const invalid = join(temporaryDirectory, 'invalid-scrypt-cost')
         expect(await run(
-            ['init', 'any', '--scryptn', '5', '--passfile', passwordFile],
+            ['init', invalid, '--scryptn', '5', '--passfile', passwordFile],
             createOutput().output
         )).toStrictEqual(EXIT_CODES.error)
+        // Invalid parameters never leave a directory behind.
+        expect(existsSync(invalid)).toStrictEqual(false)
     })
     test('encrypt refuses a wrong master key', async () => {
         const {output, result} = createOutput()
