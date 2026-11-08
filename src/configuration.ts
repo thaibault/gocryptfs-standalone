@@ -301,12 +301,13 @@ export const createConfiguration = async (
 export const initializeVault = async (
     vaultPath: string, password: Buffer, scryptLogN?: number
 ): Promise<Buffer> => {
+    // NOTE: Validates the parameters before anything gets created.
+    const {configuration, masterKey} =
+        await createConfiguration(password, scryptLogN)
+
     await mkdir(vaultPath, {recursive: true})
     if ((await readdir(vaultPath)).length > 0)
         throw new Error(`Directory "${vaultPath}" is not empty.`)
-
-    const {configuration, masterKey} =
-        await createConfiguration(password, scryptLogN)
 
     const filePath = join(vaultPath, CONFIGURATION_FILE_NAME)
     const temporaryFilePath = `${filePath}.tmp`
