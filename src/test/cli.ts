@@ -311,9 +311,9 @@ describe('cli', () => {
             await mkdir(plain, {recursive: true})
             await writeFile(join(plain, 'a.txt'), 'a')
             await writeFile(join(plain, 'ignored.tmp'), 'tmp')
-            const synchronisation = await runWithPairs(['sync', 'docs'])
-            expect(synchronisation.code).toStrictEqual(0)
-            expect(synchronisation.logs)
+            const synchronization = await runWithPairs(['sync', 'docs'])
+            expect(synchronization.code).toStrictEqual(0)
+            expect(synchronization.logs)
                 .toStrictEqual(['encrypt a.txt', 'Applied 1 changes.'])
 
             expect((await runWithPairs(['sync', 'unknown'])).errors[0])

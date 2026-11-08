@@ -105,7 +105,7 @@ Options:
                                  trash (default ${String(
         DEFAULT_TRASH_RETENTION_IN_DAYS
     )}).
-  --interval <duration>          Synchronisation interval of a pair, e.g.
+  --interval <duration>          Synchronization interval of a pair, e.g.
                                  "30s", "10m" (default) or "2h".
   --password <source>            Password source of a pair: "keychain"
                                  (default), "prompt" or "environment".
@@ -185,7 +185,7 @@ export const isNested = (first: string, second: string): boolean =>
  * @returns Exit code.
  */
 /**
- * Describes given synchronisation action for humans.
+ * Describes given synchronization action for humans.
  * @param action - Action to describe.
  * @returns Description or null for pure bookkeeping actions.
  */

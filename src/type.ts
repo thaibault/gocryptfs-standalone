@@ -67,7 +67,7 @@ export interface TreeResult {
     symbolicLinks: number
     skipped: Array<{path: string, reason: string}>
 }
-// region synchronisation
+// region synchronization
 export type EntryType = 'directory' | 'file' | 'symbolicLink'
 // Both sides of a pair: the plaintext directory and the encrypted vault.
 export type Side = 'cipher' | 'plain'
@@ -82,12 +82,12 @@ export interface Snapshot {
     type: EntryType
 }
 export type Snapshots = Map<string, Snapshot>
-// Both sides of an entry as they have been after the last synchronisation.
+// Both sides of an entry as they have been after the last synchronization.
 export interface StateEntry {
     cipher: Snapshot
     plain: Snapshot
 }
-export interface SynchronisationState {
+export interface SynchronizationState {
     entries: Record<string, StateEntry>
     plainPath: string
     synchronizedAt: null | string
@@ -118,7 +118,7 @@ export type Action =
     {type: 'forget', path: string} |
     {type: 'skip', path: string, reason: string}
 
-export interface SynchronisationResult {
+export interface SynchronizationResult {
     actions: Array<Action>
     failed: Array<{path: string, reason: string}>
 }
