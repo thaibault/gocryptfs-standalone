@@ -32,7 +32,7 @@
     "gocryptfs-standalone": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist/index.js"
   ],
   "sideEffects": true,
   "scripts": {
@@ -89,11 +89,12 @@
         }
       }
     },
-    "files": {
-      "#": "A command line application needs no html entry page.",
-      "html": []
+    "inPlace": {
+      "externalLibrary": {
+        "#": "Bundle all dependencies (including polyfills) to get a self-contained file for the standalone executables.",
+        "normal": true
+      }
     },
-    "library": false,
     "module": {
       "optimizer": {
         "terser": {
@@ -113,39 +114,15 @@
     },
     "path": {
       "source": {
-        "asset": {
-          "javaScript": "./"
-        }
+        "base": "src/"
       },
       "target": {
-        "asset": {
-          "javaScript": "./"
-        }
+        "base": "dist/"
       }
     },
     "targetTechnology": {
       "boilerplate": "node",
       "payload": "node"
-    },
-    "test": {
-      "#": "Application projects get no test entry injected by default.",
-      "injection": {
-        "entry": {
-          "testBundle": "./test"
-        }
-      }
-    },
-    "webpack": {
-      "module": {
-        "parser": {
-          "javascript": {
-            "importMeta": {
-              "#": "NOTE: We want to have this preserved by webpack to get the runtime value for \"import.meta.main\".",
-              "main": false
-            }
-          }
-        }
-      }
     }
   },
   "packageManager": "yarn@4.18.1+sha512.b2e1e7524f654f2749d32b4ebcb4622473cb5bcbc485df2007e12a154e50162a4d795526768bc5f5b8f81717bfd79deb2472813d86fb5ae2eb551fa9c872b08f"
