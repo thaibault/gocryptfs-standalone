@@ -95,6 +95,12 @@
         "normal": true
       }
     },
+    "injection": {
+      "#": "Build the command line interface as one self-contained file.",
+      "entry": {
+        "index": "./index"
+      }
+    },
     "module": {
       "optimizer": {
         "terser": {
