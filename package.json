@@ -1,6 +1,6 @@
 {
   "name": "gocryptfs-standalone",
-  "version": "0.0.1-1",
+  "version": "0.0.2",
   "description": "Synchronizes a gocryptfs (plaintext names) encrypted directory with a decrypted copy without needing FUSE or admin rights.",
   "keywords": [
     "cli",
@@ -28,7 +28,9 @@
   },
   "type": "module",
   "main": "dist/index.js",
-  "bin": "dist/index.js",
+  "bin": {
+    "gocryptfs-standalone": "dist/index.js"
+  },
   "files": [
     "dist/index.js"
   ],
