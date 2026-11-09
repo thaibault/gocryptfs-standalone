@@ -40,10 +40,10 @@ import {
     acquireLock, getPairDirectory, LockedError, purgeTrash
 } from '../state'
 import {
-    findCaseCollisions, hasSameContent, synchronize
+    findCaseCollisions, hasSameContent, isSynchronized, synchronize
 } from '../synchronize'
 import {transformFile} from '../tree'
-import type {Action} from '../type'
+import type {Action, Change} from '../type'
 // endregion
 const DATE = new Date(2026, 10, 7, 13, 4, 5)
 const CONFLICT_SUFFIX = '(conflict host 2026-11-07 13-04-05)'
@@ -274,6 +274,44 @@ describe('synchronize', () => {
             .toStrictEqual(true)
         expect(await hasSameContent(key, join(plain, 'b'), join(vault, 'b')))
             .toStrictEqual(false)
+    })
+    test('isSynchronized only accepts our own changes', async () => {
+        const check = (...changes: Array<Change>) => isSynchronized(
+            {configurationDirectory, plainPath: plain, vaultPath: vault},
+            changes
+        )
+
+        // Without any state nothing counts as synchronized.
+        await writePlain('dir/a.txt', 'a')
+        expect(await check({path: 'dir/a.txt', side: 'plain'}))
+            .toStrictEqual(false)
+
+        await sync()
+        // Everything the synchronization wrote, including directories.
+        expect(await check(
+            {path: 'dir', side: 'cipher'},
+            {path: 'dir/a.txt', side: 'cipher'},
+            {path: 'dir/a.txt', side: 'plain'},
+            // Gone entries the state does not know either.
+            {path: 'gone.txt', side: 'plain'}
+        )).toStrictEqual(true)
+
+        // Unknown paths could be anything.
+        expect(await check({path: null, side: 'plain'})).toStrictEqual(false)
+        expect(await check({path: '', side: 'cipher'})).toStrictEqual(false)
+
+        await writePlain('dir/b.txt', 'b')
+        expect(await check(
+            {path: 'dir/a.txt', side: 'plain'},
+            {path: 'dir/b.txt', side: 'plain'}
+        )).toStrictEqual(false)
+
+        await writeCipher('dir/a.txt', 'changed')
+        expect(await check({path: 'dir/a.txt', side: 'cipher'}))
+            .toStrictEqual(false)
+
+        await rm(join(plain, 'dir'), {recursive: true})
+        expect(await check({path: 'dir', side: 'plain'})).toStrictEqual(false)
     })
     test('findCaseCollisions', () => {
         expect(findCaseCollisions(['a/B.txt', 'a/b.txt', 'c']))

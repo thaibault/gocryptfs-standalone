@@ -18,6 +18,8 @@
 */
 // region imports
 import type {ResolvedPair} from './settings'
+import {LockedError} from './state'
+import type {Change} from './type'
 import type {Watcher} from './watch'
 // endregion
 // Waits for this long without further changes before synchronizing.
@@ -26,8 +28,20 @@ export const QUIET_PERIOD_IN_MILLISECONDS = 2 * 1000
 export const MAXIMAL_CHANGE_DELAY_IN_MILLISECONDS = 30 * 1000
 // Restarts a failed watcher after this long.
 export const WATCH_RETRY_INTERVAL_IN_MILLISECONDS = 5 * 60 * 1000
+// Retries a run after this long while another process synchronizes the pair.
+export const LOCKED_RETRY_INTERVAL_IN_MILLISECONDS = 10 * 1000
 
 export interface DaemonOptions {
+    /*
+        Decides whether given changes still match the last synchronization
+        (e.g. caused by its own writes), so a run triggered only by them can
+        be skipped. Without it every change leads to a run.
+    */
+    isSynchronized?: (
+        pair: ResolvedPair, changes: Array<Change>
+    ) => Promise<boolean>
+    // Timing of retries while the pair is locked (replaceable for testing).
+    lockedRetryIntervalInMilliseconds?: number
     log: (text: string) => void
     // Timing of change triggered runs (replaceable for testing).
     maximalChangeDelayInMilliseconds?: number
@@ -43,7 +57,7 @@ export interface DaemonOptions {
     */
     watchPair?: (
         pair: ResolvedPair,
-        onChange: () => void,
+        onChange: (change: Change) => void,
         onError: (error: Error) => void
     ) => Watcher
 }
@@ -52,6 +66,8 @@ interface PairState {
     // First and last change not synchronized yet.
     changedAt?: number
     lastChangedAt?: number
+    // Changes not synchronized yet by side and path.
+    changes: Map<string, Change>
     // Next synchronization by interval.
     dueAt: number
     // Whether the last attempt to watch failed.
@@ -89,15 +105,19 @@ export const sleep = (
  * after changes (if watched) or at the latest in its own interval until given
  * signal aborts. Runs never overlap, so a slow pair delays the others instead
  * of competing for disk and cpu. Failures are logged and retried in the next
- * interval, failed watchers get restarted periodically.
+ * interval (shortly if another process synchronizes the pair), failed
+ * watchers get restarted periodically.
  * @param options - Pairs, synchronization, watching and logging.
  * @returns Promise resolving after the abort when no run is active anymore.
  */
 export const runDaemon = async (options: DaemonOptions): Promise<void> => {
+    const LOCKED_RETRY_INTERVAL = LOCKED_RETRY_INTERVAL_IN_MILLISECONDS
     const MAXIMAL_CHANGE_DELAY = MAXIMAL_CHANGE_DELAY_IN_MILLISECONDS
     const QUIET_PERIOD = QUIET_PERIOD_IN_MILLISECONDS
     const WATCH_RETRY_INTERVAL = WATCH_RETRY_INTERVAL_IN_MILLISECONDS
     const {
+        isSynchronized,
+        lockedRetryIntervalInMilliseconds = LOCKED_RETRY_INTERVAL,
         log,
         maximalChangeDelayInMilliseconds = MAXIMAL_CHANGE_DELAY,
         pairs,
@@ -110,6 +130,7 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
     const states = new Map<string, PairState>(pairs.map((pair) => [
         pair.name,
         {
+            changes: new Map(),
             dueAt: 0,
             watchAt: watchPair && pair.watch ? 0 : undefined,
             watchFailed: false
@@ -131,6 +152,20 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
                     quietPeriodInMilliseconds,
                 state.changedAt + maximalChangeDelayInMilliseconds
             )
+
+    // NOTE: Any doubt (including a failing check) leads to a run.
+    const isAlreadySynchronized = async (
+        pair: ResolvedPair, changes: Array<Change>
+    ): Promise<boolean> => {
+        if (!isSynchronized || changes.length === 0)
+            return false
+
+        try {
+            return await isSynchronized(pair, changes)
+        } catch {
+            return false
+        }
+    }
 
     const stopWatching = (pair: ResolvedPair, error: unknown) => {
         const state = getState(pair)
@@ -154,10 +189,13 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
         try {
             const watcher = (watchPair as Required<DaemonOptions>['watchPair'])(
                 pair,
-                () => {
+                (change) => {
                     const now = Date.now()
                     state.changedAt ??= now
                     state.lastChangedAt = now
+                    state.changes.set(
+                        JSON.stringify([change.side, change.path]), change
+                    )
                     wakeUp.abort()
                 },
                 (error) => {
@@ -206,23 +244,49 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
 
                 const state = getState(pair)
                 if (getSynchronizationDueAt(state) <= Date.now()) {
+                    const changes = [...state.changes.values()]
+                    const isDueByChangesOnly = state.dueAt > Date.now()
                     /*
                         NOTE: Changes during the run (including our own
-                        writes) lead to another run which normally finds
-                        nothing to do.
+                        writes) get collected for the next check.
                     */
                     state.changedAt = undefined
                     state.lastChangedAt = undefined
+                    state.changes = new Map()
 
-                    try {
-                        const summary = await synchronizePair(pair)
-                        if (summary)
-                            log(`"${pair.name}": ${summary}`)
-                    } catch (error) {
-                        log(`"${pair.name}" failed: ${getMessage(error)}`)
+                    // Skips runs only caused by our own (former) writes.
+                    if (
+                        !isDueByChangesOnly ||
+                        !await isAlreadySynchronized(pair, changes)
+                    ) {
+                        let nextRunIn = pair.intervalInMilliseconds
+                        try {
+                            const summary = await synchronizePair(pair)
+                            if (summary)
+                                log(`"${pair.name}": ${summary}`)
+                        } catch (error) {
+                            if (error instanceof LockedError) {
+                                /*
+                                    NOTE: A full run follows, so the
+                                    collected changes are covered.
+                                */
+                                nextRunIn = Math.min(
+                                    nextRunIn,
+                                    lockedRetryIntervalInMilliseconds
+                                )
+                                log(
+                                    `"${pair.name}": ${error.message} ` +
+                                    `Retrying in ${String(nextRunIn / 1000)}s.`
+                                )
+                            } else
+                                log(
+                                    `"${pair.name}" failed: ` +
+                                    getMessage(error)
+                                )
+                        }
+
+                        state.dueAt = Date.now() + nextRunIn
                     }
-
-                    state.dueAt = Date.now() + pair.intervalInMilliseconds
                 }
 
                 // NOTE: Started after the first run created missing roots.

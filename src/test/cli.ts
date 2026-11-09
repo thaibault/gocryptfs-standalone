@@ -22,10 +22,12 @@ import {join} from 'path'
 import {afterAll, beforeAll, describe, expect, test} from '@jest/globals'
 
 import type {Output} from '../cli'
-import {EXIT_CODES, isNested, run} from '../cli'
+import {EXIT_CODES, findOverlappingPairs, isNested, run} from '../cli'
 import {initializeVault} from '../configuration'
 import type {Keychain} from '../keychain'
 import type {Service} from '../service'
+import {loadSettings, saveSettings} from '../settings'
+import {DAEMON_LOCK_FILE_NAME, getPairDirectory} from '../state'
 import {
     PLAIN_FIXTURE_PATH,
     VAULT_FIXTURE_MASTER_KEY,
@@ -142,6 +144,22 @@ describe('cli', () => {
         expect(isNested('/a', '/a/b')).toStrictEqual(true)
         expect(isNested('/a/b', '/a')).toStrictEqual(true)
         expect(isNested('/a', '/ab')).toStrictEqual(false)
+    })
+    test('findOverlappingPairs', () => {
+        expect(findOverlappingPairs({
+            a: {plaintext: '/plain/a', vault: '/vault/a'},
+            b: {plaintext: '/plain/b', vault: '/vault/b'}
+        })).toStrictEqual(null)
+        // Any directory of one pair inside any of the other one.
+        expect(findOverlappingPairs({
+            a: {plaintext: '/plain/a', vault: '/vault/a'},
+            b: {plaintext: '/plain/b', vault: '/vault/b'},
+            c: {plaintext: '/vault/b/c', vault: '/vault/c'}
+        })).toStrictEqual(['b', 'c'])
+        expect(findOverlappingPairs({
+            a: {plaintext: '/plain/a', vault: '/vault/a'},
+            b: {plaintext: '/plain/a', vault: '/vault/a'}
+        })).toStrictEqual(['a', 'b'])
     })
     test('init, encrypt and decrypt round trip', async () => {
         const vault = join(temporaryDirectory, 'new-vault')
@@ -369,6 +387,9 @@ describe('cli', () => {
                     '"docs": Applied 1 changes.',
                     'Stopped.'
                 ])
+            expect(existsSync(join(
+                getPairDirectory(plain, vault), DAEMON_LOCK_FILE_NAME
+            ))).toStrictEqual(false)
 
             expect((await runWithPairs(['service', 'install'])).code)
                 .toStrictEqual(0)
@@ -406,6 +427,60 @@ describe('cli', () => {
             )).code).toStrictEqual(EXIT_CODES.usage)
 
             await runWithPairs(['pair', 'remove', 'separate'])
+            delete process.env.GOCRYPTFS_PASSWORD
+        })
+        test('overlapping pairs and a second daemon are refused', async () => {
+            process.env.GOCRYPTFS_PASSWORD = 'secret'
+            expect((await runWithPairs([
+                'pair', 'add', 'first', plain, vault,
+                '--password', 'environment'
+            ])).code).toStrictEqual(0)
+
+            const message =
+                'Pairs "first" and "second" overlap, their directories must ' +
+                'not be located inside each other.'
+            for (const [plaintext, otherVault] of [
+                [join(plain, 'nested'), join(temporaryDirectory, 'other')],
+                [join(temporaryDirectory, 'other'), join(vault, 'nested')],
+                [plain, vault]
+            ]) {
+                const addition = await runWithPairs([
+                    'pair', 'add', 'second', plaintext, otherVault,
+                    '--password', 'environment'
+                ])
+                expect(addition.code).toStrictEqual(EXIT_CODES.usage)
+                expect(addition.errors).toStrictEqual([message])
+            }
+
+            // Hand edited configurations get checked as well.
+            const settings = await loadSettings()
+            settings.pairs.second = {
+                plaintext: join(temporaryDirectory, 'other'),
+                vault: join(plain, 'nested')
+            }
+            await saveSettings(settings)
+            const synchronization = await runWithPairs(['sync', 'first'])
+            expect(synchronization.code).toStrictEqual(EXIT_CODES.usage)
+            expect(synchronization.errors).toStrictEqual([message])
+            delete settings.pairs.second
+            await saveSettings(settings)
+
+            // A running daemon (here this process) owns the pair.
+            const lockPath = join(
+                getPairDirectory(plain, vault), DAEMON_LOCK_FILE_NAME
+            )
+            await writeFile(lockPath, String(process.pid))
+            const daemon = await runWithPairs(['daemon'])
+            expect(daemon.code).toStrictEqual(EXIT_CODES.locked)
+            expect(daemon.errors).toStrictEqual([
+                'Pair "first" is already watched by another daemon ' +
+                `(process ${String(process.pid)}).`
+            ])
+            // Only its own lock gets released.
+            expect(existsSync(lockPath)).toStrictEqual(true)
+            await rm(lockPath)
+
+            await runWithPairs(['pair', 'remove', 'first'])
             delete process.env.GOCRYPTFS_PASSWORD
         })
         test('service refuses pairs needing interactive passwords', async () => {

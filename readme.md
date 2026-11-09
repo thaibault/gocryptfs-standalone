@@ -199,13 +199,20 @@ Credential stores used without any native module or admin rights:
 
 The daemon unlocks all vaults on start (so wrong passwords fail early),
 synchronizes every pair right away and afterwards in its interval. Runs never
-overlap and failures get retried in the next interval.
+overlap and failures get retried in the next interval, a run blocked by a
+parallel `sync` of the same pair after 10 seconds. Only one daemon watches a
+pair at a time, another one stops right away (exit code 4). Pairs must not
+overlap: `pair add`, `sync` and `daemon` refuse configurations where a
+directory of one pair (plaintext or vault) is located inside one of another
+pair.
 
 With `"watch": true` (default) the daemon additionally listens to file system
 events of both sides (FSEvents on macOS, inotify on Linux, change
 notifications on Windows) and synchronizes a pair 2 seconds after the last
 change, at the latest 30 seconds after the first one while changes keep
-coming. Events only trigger a regular synchronization, so the interval stays
+coming. Changed entries still looking like after the last synchronization
+(e.g. written by it) do not trigger a run. Events only trigger a regular
+synchronization, so the interval stays
 as fallback for changes no event reports: cloud clients (e.g. files arriving
 in a Google Drive folder) and network or FUSE mounts often do not report
 everything. If watching fails (e.g. Linux' limit of inotify watches,

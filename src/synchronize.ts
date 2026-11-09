@@ -45,10 +45,12 @@ import {
 } from './tree'
 import type {
     Action,
+    Change,
     ConflictResolution,
     Side,
     Snapshot,
     Snapshots,
+    StateEntry,
     SynchronizationResult
 } from './type'
 // endregion
@@ -215,6 +217,57 @@ export const hasSameContent = async (
     } finally {
         await fileHandle.close()
     }
+}
+/**
+ * Checks whether all given changed entries still look like after the last
+ * synchronization, which is the case for changes made by the synchronization
+ * itself. Unknown paths and an unusable state never count as synchronized.
+ * @param options - Pair locations.
+ * @param changes - Reported changes.
+ * @returns Indicates whether a synchronization would find nothing to do for
+ * given changes.
+ */
+export const isSynchronized = async (
+    options: Pick<
+        SynchronizationOptions,
+        'configurationDirectory' | 'plainPath' | 'vaultPath'
+    >,
+    changes: Iterable<Change>
+): Promise<boolean> => {
+    const roots: Record<Side, string> = {
+        cipher: resolve(options.vaultPath), plain: resolve(options.plainPath)
+    }
+    const pairDirectory = getPairDirectory(
+        roots.plain,
+        roots.cipher,
+        options.configurationDirectory ?? getConfigurationDirectory()
+    )
+
+    const {state, warning} =
+        await loadState(pairDirectory, roots.plain, roots.cipher)
+    if (warning)
+        return false
+
+    for (const {path, side} of changes) {
+        if (!path)
+            return false
+
+        /*
+            NOTE: Synchronizing refreshes the state of all touched entries
+            from disk, so only foreign changes differ from it.
+        */
+        const entry: StateEntry | undefined =
+            Object.prototype.hasOwnProperty.call(state.entries, path) ?
+                state.entries[path] :
+                undefined
+        if (!isSameSnapshot(
+            await getSnapshot(join(roots[side], ...path.split('/'))),
+            entry?.[side]
+        ))
+            return false
+    }
+
+    return true
 }
 /**
  * Synchronizes a plaintext directory with a vault in both directions.
