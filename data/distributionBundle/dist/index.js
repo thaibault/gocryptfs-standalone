@@ -1656,7 +1656,7 @@ es_array_includes_namespaceFn();
 ;// external "util"
 
 ;// ./package.json
-const package_namespaceObject = {"rE":"0.0.1-1"};
+const package_namespaceObject = {"rE":"0.0.2-1"};
 ;// external "crypto"
 
 ;// external "fs/promises"
@@ -2444,16 +2444,16 @@ var EXIT_CODES={error:1,usage:2,unsupportedVault:3,locked:4,wrongPassword:12};va
  * @param second - Second absolute path.
  * @returns Indicates whether the paths overlap.
  */var isNested=function isNested(first,second){return first===second||first.startsWith(__WEBPACK_EXTERNAL_MODULE_path_join__(second,"/"))||second.startsWith(__WEBPACK_EXTERNAL_MODULE_path_join__(first,"/"))};/**
+ * Describes given synchronization action for humans.
+ * @param action - Action to describe.
+ * @returns Description or null for pure bookkeeping actions.
+ */var describeAction=function describeAction(action){var sideName=function sideName(side){return side==="plain"?"plaintext":"vault"};switch(action.type){case"transfer":return"".concat(action.from==="plain"?"encrypt":"decrypt"," ")+action.path;case"createDirectory":return"create directory in ".concat(sideName(action.side)," ").concat(action.path);case"trash":return"trash in ".concat(sideName(action.side)," ").concat(action.path);case"removeDirectory":return"remove directory in ".concat(sideName(action.side)," ").concat(action.path);case"compare":case"conflict":return(action.type==="compare"?"compare (on difference: ":"")+"conflict ".concat(action.path," -> ").concat(sideName(action.loser)," version ")+"kept as \"".concat(action.conflictPath,"\"")+(action.type==="compare"?")":"");case"skip":return"skip ".concat(action.path,": ").concat(action.reason);default:return null}};/**
  * Prints a summary of given tree transformation.
  * @param output - Output channels.
  * @param verb - Describes the transformation.
  * @param result - Transformation result.
  * @returns Exit code.
- *//**
- * Describes given synchronization action for humans.
- * @param action - Action to describe.
- * @returns Description or null for pure bookkeeping actions.
- */var describeAction=function describeAction(action){var sideName=function sideName(side){return side==="plain"?"plaintext":"vault"};switch(action.type){case"transfer":return"".concat(action.from==="plain"?"encrypt":"decrypt"," ")+action.path;case"createDirectory":return"create directory in ".concat(sideName(action.side)," ").concat(action.path);case"trash":return"trash in ".concat(sideName(action.side)," ").concat(action.path);case"removeDirectory":return"remove directory in ".concat(sideName(action.side)," ").concat(action.path);case"compare":case"conflict":return(action.type==="compare"?"compare (on difference: ":"")+"conflict ".concat(action.path," -> ").concat(sideName(action.loser)," version ")+"kept as \"".concat(action.conflictPath,"\"")+(action.type==="compare"?")":"");case"skip":return"skip ".concat(action.path,": ").concat(action.reason);default:return null}};var report=function report(output,verb,result){output.log("".concat(verb," ").concat(String(result.files)," files, ")+"".concat(String(result.directories)," directories and ")+"".concat(String(result.symbolicLinks)," symbolic links."));var _iterator3=cli_createForOfIteratorHelper(result.skipped),_step3;try{for(_iterator3.s();!(_step3=_iterator3.n()).done;){var _step3$value=_step3.value,path=_step3$value.path,reason=_step3$value.reason;output.error("Skipped \"".concat(path,"\": ").concat(reason))}}catch(err){_iterator3.e(err)}finally{_iterator3.f()}return result.skipped.length>0?EXIT_CODES.error:0};/**
+ */var report=function report(output,verb,result){output.log("".concat(verb," ").concat(String(result.files)," files, ")+"".concat(String(result.directories)," directories and ")+"".concat(String(result.symbolicLinks)," symbolic links."));var _iterator3=cli_createForOfIteratorHelper(result.skipped),_step3;try{for(_iterator3.s();!(_step3=_iterator3.n()).done;){var _step3$value=_step3.value,path=_step3$value.path,reason=_step3$value.reason;output.error("Skipped \"".concat(path,"\": ").concat(reason))}}catch(err){_iterator3.e(err)}finally{_iterator3.f()}return result.skipped.length>0?EXIT_CODES.error:0};/**
  * Runs the command line interface.
  * @param argv - Arguments without node and script path.
  * @param output - Output channels.
