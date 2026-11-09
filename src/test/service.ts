@@ -149,14 +149,17 @@ describe('service', () => {
 })
 
 describe('daemon', () => {
-    const createPair = (name: string, interval: number): ResolvedPair => ({
+    const createPair = (
+        name: string, interval: number, watch = false
+    ): ResolvedPair => ({
         excludes: [],
         intervalInMilliseconds: interval,
         name,
         password: 'keychain',
         plaintext: '/a',
         trashDays: 30,
-        vault: '/b'
+        vault: '/b',
+        watch
     })
 
     test('sleep ends early on abort', async () => {
@@ -188,6 +191,10 @@ describe('daemon', () => {
                     controller.abort()
 
                 return Promise.resolve(runs.length === 1 ? 'Applied 1 changes.' : null)
+            },
+            // Pairs not to watch are never watched.
+            watchPair: () => {
+                throw new Error('Unexpected watching.')
             }
         })
 
@@ -196,6 +203,119 @@ describe('daemon', () => {
             'Started synchronizing "fast" every 0.02s, "slow" every 100s.',
             '"fast": Applied 1 changes.',
             '"slow" failed: Vault not reachable.',
+            'Stopped.'
+        ])
+    })
+    test('runDaemon synchronizes shortly after changes', async () => {
+        const controller = new AbortController()
+        const logs: Array<string> = []
+        const runTimes: Array<number> = []
+        let closed = 0
+        let onChange = () => undefined as void
+        let changeTimer: ReturnType<typeof setInterval> | undefined
+
+        await runDaemon({
+            log: (text) => logs.push(text),
+            maximalChangeDelayInMilliseconds: 100,
+            pairs: [createPair('docs', 100000, true)],
+            quietPeriodInMilliseconds: 20,
+            signal: controller.signal,
+            synchronizePair: () => {
+                runTimes.push(Date.now())
+                if (runTimes.length === 1)
+                    // One single change.
+                    setTimeout(() => {
+                        onChange()
+                    }, 10)
+                else if (runTimes.length === 2)
+                    // Changes keep coming.
+                    changeTimer = setInterval(() => {
+                        onChange()
+                    }, 5)
+                else {
+                    clearInterval(changeTimer)
+                    controller.abort()
+                }
+
+                return Promise.resolve(null)
+            },
+            watchPair: (_, givenOnChange) => {
+                onChange = givenOnChange
+
+                return {
+                    close: () => {
+                        closed += 1
+                    }
+                }
+            }
+        })
+
+        expect(runTimes).toHaveLength(3)
+        // Waits for the quiet period after the change.
+        expect(runTimes[1] - runTimes[0]).toBeGreaterThanOrEqual(25)
+        expect(runTimes[1] - runTimes[0]).toBeLessThan(5000)
+        // Continuous changes delay a run at most the maximal delay.
+        expect(runTimes[2] - runTimes[1]).toBeGreaterThanOrEqual(95)
+        expect(runTimes[2] - runTimes[1]).toBeLessThan(5000)
+        expect(closed).toStrictEqual(1)
+        expect(logs).toStrictEqual([
+            'Started synchronizing "docs" every 100s and on changes.',
+            'Stopped.'
+        ])
+    })
+    test('runDaemon restarts failed watchers', async () => {
+        const controller = new AbortController()
+        const logs: Array<string> = []
+        let runs = 0
+        let watchCalls = 0
+        let closed = 0
+        let onError = (_: Error) => undefined as void
+
+        await runDaemon({
+            log: (text) => logs.push(text),
+            pairs: [createPair('docs', 100000, true)],
+            signal: controller.signal,
+            synchronizePair: () => {
+                runs += 1
+                if (runs === 2)
+                    setTimeout(() => {
+                        onError(new Error('Watch lost.'))
+                        // Both sides may report the same problem.
+                        onError(new Error('Watch lost.'))
+                    }, 5)
+                else if (runs === 3)
+                    controller.abort()
+
+                return Promise.resolve(null)
+            },
+            watchPair: (_, __, givenOnError) => {
+                watchCalls += 1
+                if (watchCalls === 1)
+                    throw new Error('No space left.')
+
+                onError = givenOnError
+
+                return {
+                    close: () => {
+                        closed += 1
+                    }
+                }
+            },
+            watchRetryIntervalInMilliseconds: 30
+        })
+
+        // Each successful restart catches up with missed changes.
+        expect(runs).toStrictEqual(3)
+        expect(watchCalls).toStrictEqual(3)
+        expect(closed).toStrictEqual(2)
+        expect(logs).toStrictEqual([
+            'Started synchronizing "docs" every 100s and on changes.',
+            '"docs": watching for changes failed (No space left.), ' +
+            'synchronizing in its interval until watching works again.',
+            '"docs": watching for changes again.',
+            '"docs": watching for changes failed (Watch lost.), ' +
+            'synchronizing in its interval until watching works again.',
+            '"docs": watching for changes again.',
             'Stopped.'
         ])
     })

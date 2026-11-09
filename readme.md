@@ -144,7 +144,7 @@ gocryptfs-standalone pair add documents ~/Documents/private ~/GoogleDrive/vault 
 gocryptfs-standalone pair list
 gocryptfs-standalone sync documents        # one pair
 gocryptfs-standalone sync                  # all pairs
-gocryptfs-standalone daemon                # all pairs in their intervals until stopped
+gocryptfs-standalone daemon                # all pairs on changes and in their intervals until stopped
 gocryptfs-standalone service install       # start "daemon" after each log in
 gocryptfs-standalone service status
 gocryptfs-standalone service uninstall
@@ -159,7 +159,8 @@ and can be edited by hand as well:
     "defaults": {
         "excludes": [".DS_Store", "._*", ".~lock.*#", "Thumbs.db", "desktop.ini", "~$*"],
         "interval": "10m",
-        "trashDays": 30
+        "trashDays": 30,
+        "watch": true
     },
     "pairs": {
         "documents": {
@@ -168,6 +169,7 @@ and can be edited by hand as well:
             "interval": "5m",
             "excludes": ["*.tmp", "build/"],
             "trashDays": 7,
+            "watch": false,
             "password": "keychain",
             "config": "/home/me/vault.conf"
         }
@@ -199,7 +201,19 @@ Credential stores used without any native module or admin rights:
 
 The daemon unlocks all vaults on start (so wrong passwords fail early),
 synchronizes every pair right away and afterwards in its interval. Runs never
-overlap and failures get retried in the next interval. `service install`
+overlap and failures get retried in the next interval.
+
+With `"watch": true` (default) the daemon additionally listens to file system
+events of both sides (FSEvents on macOS, inotify on Linux, change
+notifications on Windows) and synchronizes a pair 2 seconds after the last
+change, at the latest 30 seconds after the first one while changes keep
+coming. Events only trigger a regular synchronization, so the interval stays
+as fallback for changes no event reports: cloud clients (e.g. files arriving
+in a Google Drive folder) and network or FUSE mounts often do not report
+everything. If watching fails (e.g. Linux' limit of inotify watches,
+`fs.inotify.max_user_watches`, is reached) the pair is synchronized in its
+interval only and watching is retried every 5 minutes. `--no-watch` disables
+watching for `pair add` or a single `daemon` run. `service install`
 registers it per user:
 
 - **macOS**: launchd agent `~/Library/LaunchAgents/com.tsickert.gocryptfs-standalone.plist`,
