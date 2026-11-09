@@ -30,8 +30,6 @@ Project Status
 [![deploy web documentation](https://img.shields.io/github/actions/workflow/status/thaibault/gocryptfs-standalone/deploy-web-documentation.yaml?label=deploy%20web%20documentation&style=for-the-badge)](https://github.com/thaibault/gocryptfs-standalone/actions/workflows/deploy-web-documentation.yaml)
 [![web documentation](https://img.shields.io/website-up-down-green-red/https/tsickert.com/gocryptfs-standalone.svg?label=web-documentation&style=for-the-badge)](https://tsickert.com/gocryptfs-standalone)
 
-[![Open in CodeSandbox](https://img.shields.io/badge/Open%20in-CodeSandbox-blue?style=for-the-badge&logo=codesandbox)](https://githubbox.com/thaibault/gocryptfs-standalone)
-
 Use case
 --------
 
