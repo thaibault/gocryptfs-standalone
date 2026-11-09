@@ -31,6 +31,8 @@ export const CONFIGURATION_DIRECTORY_ENVIRONMENT_VARIABLE_NAME =
     'GOCRYPTFS_STANDALONE_CONFIGURATION_DIRECTORY'
 export const STATE_FILE_NAME = 'state.json'
 export const LOCK_FILE_NAME = 'lock'
+// Held by a daemon as long as it watches the pair.
+export const DAEMON_LOCK_FILE_NAME = 'daemon.lock'
 export const TRASH_DIRECTORY_NAME = 'trash'
 export const DEFAULT_TRASH_RETENTION_IN_DAYS = 30
 
@@ -175,16 +177,21 @@ const isRunning = (pid: number): boolean => {
     }
 }
 /**
- * Acquires the lock of given pair so only one synchronization runs at a time.
- * Locks of no longer running processes get taken over.
+ * Acquires the lock of given pair so only one synchronization (or with
+ * another lock file name one daemon) runs at a time. Locks of no longer
+ * running processes get taken over.
  * @param pairDirectory - Directory of the pair.
+ * @param fileName - Name of the lock file.
+ * @param holder - Describes the process holding the lock for errors.
  * @returns Function to release the lock.
  */
 export const acquireLock = async (
-    pairDirectory: string
+    pairDirectory: string,
+    fileName = LOCK_FILE_NAME,
+    holder = 'Another synchronization of this pair is running'
 ): Promise<() => Promise<void>> => {
     await mkdir(pairDirectory, {recursive: true})
-    const filePath = join(pairDirectory, LOCK_FILE_NAME)
+    const filePath = join(pairDirectory, fileName)
 
     for (let attempt = 0; attempt < 2; attempt += 1)
         try {
@@ -197,10 +204,7 @@ export const acquireLock = async (
 
             const pid = Number(await readFile(filePath, {encoding: 'utf-8'}))
             if (Number.isInteger(pid) && pid > 0 && isRunning(pid))
-                throw new LockedError(
-                    'Another synchronization of this pair is running ' +
-                    `(process ${String(pid)}).`
-                )
+                throw new LockedError(`${holder} (process ${String(pid)}).`)
 
             await rm(filePath, {force: true})
         }

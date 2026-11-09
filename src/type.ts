@@ -72,6 +72,14 @@ export type EntryType = 'directory' | 'file' | 'symbolicLink'
 // Both sides of a pair: the plaintext directory and the encrypted vault.
 export type Side = 'cipher' | 'plain'
 /**
+ * A file system change reported for one side. The relative posix path is
+ * null or empty if it is unknown (could be anything).
+ */
+export interface Change {
+    path: null | string
+    side: Side
+}
+/**
  * What is relevant to detect changes of a file system entry. For files on
  * the cipher side the size is the encrypted size.
  */

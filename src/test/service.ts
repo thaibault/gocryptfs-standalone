@@ -30,6 +30,8 @@ import {
     getProgram
 } from '../service'
 import type {ResolvedPair} from '../settings'
+import {LockedError} from '../state'
+import type {Change} from '../type'
 // endregion
 const PROGRAM = ['/opt/node', '/opt/app/index.js']
 
@@ -211,7 +213,10 @@ describe('daemon', () => {
         const logs: Array<string> = []
         const runTimes: Array<number> = []
         let closed = 0
-        let onChange = () => undefined as void
+        let onChange = (_: Change) => undefined as void
+        const change = () => {
+            onChange({path: 'a.txt', side: 'plain'})
+        }
         let changeTimer: ReturnType<typeof setInterval> | undefined
 
         await runDaemon({
@@ -224,14 +229,10 @@ describe('daemon', () => {
                 runTimes.push(Date.now())
                 if (runTimes.length === 1)
                     // One single change.
-                    setTimeout(() => {
-                        onChange()
-                    }, 10)
+                    setTimeout(change, 10)
                 else if (runTimes.length === 2)
                     // Changes keep coming.
-                    changeTimer = setInterval(() => {
-                        onChange()
-                    }, 5)
+                    changeTimer = setInterval(change, 5)
                 else {
                     clearInterval(changeTimer)
                     controller.abort()
@@ -260,6 +261,97 @@ describe('daemon', () => {
         expect(closed).toStrictEqual(1)
         expect(logs).toStrictEqual([
             'Started synchronizing "docs" every 100s and on changes.',
+            'Stopped.'
+        ])
+    })
+    test('runDaemon skips runs caused by its own changes', async () => {
+        const controller = new AbortController()
+        const checked: Array<Array<Change>> = []
+        let runs = 0
+        let onChange = (_: Change) => undefined as void
+
+        await runDaemon({
+            isSynchronized: (_, changes) => {
+                checked.push(changes)
+                if (checked.length === 1)
+                    // Our own write shortly after the run, so another change.
+                    setTimeout(() => {
+                        onChange({path: 'b.txt', side: 'cipher'})
+                    }, 5)
+                if (checked.length === 3)
+                    return Promise.reject(new Error('State not readable.'))
+
+                return Promise.resolve(checked.length === 1)
+            },
+            log: () => undefined,
+            pairs: [createPair('docs', 100000, true)],
+            quietPeriodInMilliseconds: 10,
+            signal: controller.signal,
+            synchronizePair: () => {
+                runs += 1
+                if (runs === 1)
+                    setTimeout(() => {
+                        // Collected once per side and path.
+                        onChange({path: 'a.txt', side: 'cipher'})
+                        onChange({path: 'a.txt', side: 'cipher'})
+                        onChange({path: 'a.txt', side: 'plain'})
+                    }, 5)
+                else if (runs === 2)
+                    setTimeout(() => {
+                        onChange({path: 'c.txt', side: 'plain'})
+                    }, 5)
+                else
+                    controller.abort()
+
+                return Promise.resolve(null)
+            },
+            watchPair: (_, givenOnChange) => {
+                onChange = givenOnChange
+
+                return {close: () => undefined}
+            }
+        })
+
+        // Besides the initial run only foreign changes and doubts run.
+        expect(runs).toStrictEqual(3)
+        expect(checked).toStrictEqual([
+            [{path: 'a.txt', side: 'cipher'}, {path: 'a.txt', side: 'plain'}],
+            [{path: 'b.txt', side: 'cipher'}],
+            [{path: 'c.txt', side: 'plain'}]
+        ])
+    })
+    test('runDaemon retries shortly while the pair is locked', async () => {
+        const controller = new AbortController()
+        const logs: Array<string> = []
+        const runTimes: Array<number> = []
+
+        await runDaemon({
+            lockedRetryIntervalInMilliseconds: 20,
+            log: (text) => logs.push(text),
+            pairs: [createPair('docs', 100000)],
+            signal: controller.signal,
+            synchronizePair: () => {
+                runTimes.push(Date.now())
+                if (runTimes.length === 1)
+                    return Promise.reject(new LockedError(
+                        'Another synchronization of this pair is running ' +
+                        '(process 1).'
+                    ))
+
+                controller.abort()
+
+                return Promise.resolve(null)
+            }
+        })
+
+        // Far before the interval.
+        expect(runTimes).toHaveLength(2)
+        expect(runTimes[1] - runTimes[0]).toBeGreaterThanOrEqual(15)
+        expect(runTimes[1] - runTimes[0]).toBeLessThan(5000)
+        expect(logs).toStrictEqual([
+            'Started synchronizing "docs" every 100s.',
+            '"docs": Another synchronization of this pair is running ' +
+            '(process 1). Retrying in 0.02s.',
             'Stopped.'
         ])
     })

@@ -50,9 +50,15 @@ import {
     saveSettings,
     validatePasswordSource
 } from './settings'
-import type {PasswordSource, ResolvedPair} from './settings'
-import {DEFAULT_TRASH_RETENTION_IN_DAYS, LockedError} from './state'
-import {synchronize} from './synchronize'
+import type {PairSettings, PasswordSource, ResolvedPair} from './settings'
+import {
+    acquireLock,
+    DAEMON_LOCK_FILE_NAME,
+    DEFAULT_TRASH_RETENTION_IN_DAYS,
+    getPairDirectory,
+    LockedError
+} from './state'
+import {isSynchronized, synchronize} from './synchronize'
 import {
     decryptTree, encryptTree, findSampleFile, isInternalPath
 } from './tree'
@@ -184,6 +190,39 @@ export const isNested = (first: string, second: string): boolean =>
     first === second ||
     first.startsWith(join(second, '/')) ||
     second.startsWith(join(first, '/'))
+/**
+ * Finds two pairs whose directories (plaintext or vault) are located inside
+ * each other, so they would synchronize each other's files.
+ * @param pairs - Configured pairs by name.
+ * @returns Names of the first two overlapping pairs or null.
+ */
+export const findOverlappingPairs = (
+    pairs: Record<string, Pick<PairSettings, 'plaintext' | 'vault'>>
+): [string, string] | null => {
+    const entries = Object.entries(pairs)
+    for (const [index, [firstName, first]] of entries.entries())
+        for (const [secondName, second] of entries.slice(index + 1))
+            for (const firstPath of [first.plaintext, first.vault])
+                for (const secondPath of [second.plaintext, second.vault])
+                    if (isNested(resolve(firstPath), resolve(secondPath)))
+                        return [firstName, secondName]
+
+    return null
+}
+/**
+ * Ensures that no configured pairs overlap.
+ * @param pairs - Configured pairs by name.
+ */
+const assertNoOverlappingPairs = (
+    pairs: Record<string, Pick<PairSettings, 'plaintext' | 'vault'>>
+) => {
+    const overlapping = findOverlappingPairs(pairs)
+    if (overlapping)
+        throw new UsageError(
+            `Pairs "${overlapping[0]}" and "${overlapping[1]}" overlap, ` +
+            'their directories must not be located inside each other.'
+        )
+}
 /**
  * Describes given synchronization action for humans.
  * @param action - Action to describe.
@@ -415,6 +454,8 @@ export const run = async (
 
         const getPairs = async (names: Array<string>) => {
             const settings = await loadSettings()
+            // NOTE: Also checks pairs not given, they may run elsewhere.
+            assertNoOverlappingPairs(settings.pairs)
             const pairNames = names.length > 0 ?
                 names :
                 Object.keys(settings.pairs)
@@ -668,6 +709,9 @@ export const run = async (
                         'Plaintext directory and vault must not be located ' +
                         'inside each other.'
                     )
+                assertNoOverlappingPairs(
+                    {...settings.pairs, [name]: {plaintext, vault}}
+                )
                 if (values.interval !== undefined)
                     parseInterval(values.interval)
 
@@ -732,53 +776,73 @@ export const run = async (
                         'must not be located inside each other.'
                     )
 
-            // Unlock everything first so wrong passwords stop the start.
-            const contentKeys = new Map<string, Buffer>()
-            for (const pair of pairs)
-                contentKeys.set(
-                    pair.name, await getContentKey(pair.vault, pair)
-                )
-
-            const abortController = new AbortController()
-            const stop = () => {
-                abortController.abort()
-            }
-            const signal = givenDependencies.signal ?? abortController.signal
-            if (!givenDependencies.signal)
-                for (const name of ['SIGINT', 'SIGTERM'] as const)
-                    process.once(name, stop)
-
-            const log = (text: string) => {
-                output.log(`${new Date().toISOString()} ${text}`)
-            }
+            // NOTE: Taken before asking for passwords, a second daemon stops.
+            const releaseLocks: Array<() => Promise<void>> = []
             try {
-                await runDaemon({
-                    log,
-                    pairs,
-                    signal,
-                    watchPair: givenDependencies.watchPair ?? watchPair,
-                    synchronizePair: async (pair) => {
-                        const result = await synchronizePair(
-                            pair,
-                            contentKeys.get(pair.name) as Buffer,
-                            (text) => {
-                                log(`"${pair.name}": ${text}`)
-                            }
-                        )
+                for (const pair of pairs)
+                    releaseLocks.push(await acquireLock(
+                        getPairDirectory(pair.plaintext, pair.vault),
+                        DAEMON_LOCK_FILE_NAME,
+                        `Pair "${pair.name}" is already watched by another ` +
+                        'daemon'
+                    ))
 
-                        return result.changes > 0 || result.failed ?
-                            result.summary :
-                            null
-                    }
-                })
+                // Unlock everything first so wrong passwords stop the start.
+                const contentKeys = new Map<string, Buffer>()
+                for (const pair of pairs)
+                    contentKeys.set(
+                        pair.name, await getContentKey(pair.vault, pair)
+                    )
+
+                const abortController = new AbortController()
+                const stop = () => {
+                    abortController.abort()
+                }
+                const signal =
+                    givenDependencies.signal ?? abortController.signal
+                if (!givenDependencies.signal)
+                    for (const name of ['SIGINT', 'SIGTERM'] as const)
+                        process.once(name, stop)
+
+                const log = (text: string) => {
+                    output.log(`${new Date().toISOString()} ${text}`)
+                }
+                try {
+                    await runDaemon({
+                        isSynchronized: (pair, changes) => isSynchronized(
+                            {plainPath: pair.plaintext, vaultPath: pair.vault},
+                            changes
+                        ),
+                        log,
+                        pairs,
+                        signal,
+                        watchPair: givenDependencies.watchPair ?? watchPair,
+                        synchronizePair: async (pair) => {
+                            const result = await synchronizePair(
+                                pair,
+                                contentKeys.get(pair.name) as Buffer,
+                                (text) => {
+                                    log(`"${pair.name}": ${text}`)
+                                }
+                            )
+
+                            return result.changes > 0 || result.failed ?
+                                result.summary :
+                                null
+                        }
+                    })
+                } finally {
+                    for (const name of ['SIGINT', 'SIGTERM'] as const)
+                        process.removeListener(name, stop)
+                    for (const key of contentKeys.values())
+                        key.fill(0)
+                }
+
+                return 0
             } finally {
-                for (const name of ['SIGINT', 'SIGTERM'] as const)
-                    process.removeListener(name, stop)
-                for (const key of contentKeys.values())
-                    key.fill(0)
+                for (const releaseLock of releaseLocks)
+                    await releaseLock()
             }
-
-            return 0
         }
         case 'service': {
             const [subcommand] = parameters

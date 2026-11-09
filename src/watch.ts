@@ -24,7 +24,7 @@ import {createExcludeMatcher} from './exclude'
 import type {ExcludeMatcher} from './exclude'
 import type {ResolvedPair} from './settings'
 import {isInternalPath, isTemporaryPath} from './tree'
-import type {Side} from './type'
+import type {Change, Side} from './type'
 // endregion
 export interface Watcher {
     close: () => void
@@ -109,7 +109,7 @@ export const isRelevantChange = (
 /**
  * Watches both sides of given pair for relevant changes.
  * @param pair - Pair to watch.
- * @param onChange - Called on each relevant change.
+ * @param onChange - Called with each relevant change.
  * @param onError - Called when watching does not work anymore.
  * @param watchGivenDirectory - Watches one directory (replaceable for
  * testing).
@@ -117,7 +117,7 @@ export const isRelevantChange = (
  */
 export const watchPair = (
     pair: ResolvedPair,
-    onChange: () => void,
+    onChange: (change: Change) => void,
     onError: (error: Error) => void,
     watchGivenDirectory: WatchDirectory = watchDirectory
 ): Watcher => {
@@ -136,7 +136,7 @@ export const watchPair = (
                 path,
                 (relativePath) => {
                     if (isRelevantChange(relativePath, side, isExcluded))
-                        onChange()
+                        onChange({path: relativePath, side})
                 },
                 onError
             ))

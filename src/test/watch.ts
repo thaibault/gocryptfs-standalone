@@ -23,7 +23,7 @@ import {describe, expect, test} from '@jest/globals'
 import {createExcludeMatcher} from '../exclude'
 import type {ResolvedPair} from '../settings'
 import {TEMPORARY_FILE_PREFIX} from '../tree'
-import type {Side} from '../type'
+import type {Change, Side} from '../type'
 import type {Watcher, WatchDirectory} from '../watch'
 import {isRelevantChange, watchDirectory, watchPair} from '../watch'
 // endregion
@@ -64,7 +64,7 @@ describe('watch', () => {
         const callbacks = new Map<string, (path: null | string) => void>()
         const closed: Array<string> = []
         const errors: Array<Error> = []
-        let changes = 0
+        const changes: Array<Change> = []
         const watchFake: WatchDirectory = (path, onChange, onError) => {
             callbacks.set(path, onChange)
             onError(new Error(path))
@@ -78,9 +78,7 @@ describe('watch', () => {
 
         const watcher = watchPair(
             pair,
-            () => {
-                changes += 1
-            },
+            (change) => changes.push(change),
             (error) => errors.push(error),
             watchFake
         )
@@ -91,7 +89,9 @@ describe('watch', () => {
         callbacks.get('/plain')?.('a.tmp')
         callbacks.get('/vault')?.('gocryptfs.conf')
         callbacks.get('/vault')?.('b.txt')
-        expect(changes).toStrictEqual(2)
+        expect(changes).toStrictEqual([
+            {path: 'a.txt', side: 'plain'}, {path: 'b.txt', side: 'cipher'}
+        ])
 
         watcher.close()
         expect(closed).toStrictEqual(['/plain', '/vault'])
