@@ -55,6 +55,8 @@ export interface PairSettings {
     plaintext: string
     trashDays?: number
     vault: string
+    // Synchronizes shortly after file system changes (daemon only).
+    watch?: boolean
 }
 
 export interface Settings {
@@ -62,6 +64,7 @@ export interface Settings {
         excludes: Array<string>
         interval: number | string
         trashDays: number
+        watch: boolean
     }
     pairs: Record<string, PairSettings>
 }
@@ -75,6 +78,7 @@ export interface ResolvedPair {
     plaintext: string
     trashDays: number
     vault: string
+    watch: boolean
 }
 /**
  * Creates the settings of a fresh installation.
@@ -84,7 +88,8 @@ export const createSettings = (): Settings => ({
     defaults: {
         excludes: [...DEFAULT_EXCLUDES],
         interval: DEFAULT_INTERVAL,
-        trashDays: 30
+        trashDays: 30,
+        watch: true
     },
     pairs: {}
 })
@@ -166,6 +171,10 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
             `Pair "${name}": "trashDays" has to be a non negative integer.`
         )
 
+    const watch = pair.watch ?? settings.defaults.watch
+    if (typeof watch !== 'boolean')
+        throw new Error(`Pair "${name}": "watch" has to be true or false.`)
+
     return {
         ...(pair.config === undefined ? {} : {config: pair.config}),
         excludes: [...settings.defaults.excludes, ...pair.excludes ?? []],
@@ -175,7 +184,8 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
         password: validatePasswordSource(pair.password ?? 'prompt'),
         plaintext: pair.plaintext,
         trashDays,
-        vault: pair.vault
+        vault: pair.vault,
+        watch
     }
 }
 /**

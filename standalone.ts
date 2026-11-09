@@ -27,8 +27,9 @@
     syntax is allowed here.
 */
 // region imports
-import {spawnSync} from 'child_process'
+import {spawn, spawnSync} from 'child_process'
 import {randomBytes} from 'crypto'
+import {existsSync} from 'fs'
 import {
     mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile
 } from 'fs/promises'
@@ -188,6 +189,26 @@ const assertSameTree = async (
             throw new Error(`${description}: content of "${path}" differs.`)
 }
 /**
+ * Waits until given check succeeds.
+ * @param check - Condition to wait for.
+ * @param description - Describes the condition for error messages.
+ * @param timeoutInMilliseconds - Maximal time to wait.
+ * @returns Promise resolving when the condition is met.
+ */
+const waitFor = async (
+    check: () => boolean,
+    description: string,
+    timeoutInMilliseconds = 30000
+): Promise<void> => {
+    const end = Date.now() + timeoutInMilliseconds
+    while (!check()) {
+        if (Date.now() > end)
+            throw new Error(`Timed out waiting for ${description}.`)
+
+        await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+}
+/**
  * Runs an end-to-end check of given executable (without symbolic links,
  * keychain and service which need special permissions on some platforms).
  * @param executable - Executable to check.
@@ -279,6 +300,43 @@ const test = async (executable: string): Promise<void> => {
         run(['pair', 'add', 'smoke', plain, path('vault'), ...password])
         if (!run(['sync', 'smoke']).stderr.includes('Applied 0 changes.'))
             throw new Error('Configured pair is not in sync.')
+
+        step('daemon synchronizes on file system events')
+        // NOTE: The interval is far too long to synchronize the change.
+        run(['pair', 'remove', 'smoke'])
+        run([
+            'pair', 'add', 'smoke', plain, path('vault'), ...password,
+            '--interval', '1h'
+        ])
+        let daemonOutput = ''
+        const daemon = spawn(program, ['daemon'], {
+            env: {...process.env, ...environment}
+        })
+        daemon.stderr.on('data', (data: Buffer) => {
+            daemonOutput += data.toString()
+        })
+        try {
+            // Watching starts after the initial run.
+            await waitFor(
+                () => daemonOutput.includes('and on changes'),
+                `the daemon to start, got: ${daemonOutput}`
+            )
+            await new Promise((resolve) => setTimeout(resolve, 2000))
+
+            await writeFile(join(plain, 'watched.txt'), 'watched\n')
+            await waitFor(
+                () => existsSync(path('vault', 'watched.txt')),
+                `the change to be encrypted, got: ${daemonOutput}`
+            )
+            // NOTE: Files only appear complete (written and renamed).
+            if (
+                run(['cat', path('vault'), 'watched.txt', ...password])
+                    .stdout !== 'watched\n'
+            )
+                throw new Error('Watched change has unexpected content.')
+        } finally {
+            daemon.kill()
+        }
         run(['pair', 'remove', 'smoke'])
 
         console.log(`All checks of "${executable}" passed.`)

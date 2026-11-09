@@ -57,6 +57,7 @@ import {
     decryptTree, encryptTree, findSampleFile, isInternalPath
 } from './tree'
 import type {Action, TreeResult} from './type'
+import {watchPair} from './watch'
 // endregion
 // Exit codes aligned with gocryptfs where an equivalent exists.
 export const EXIT_CODES = {
@@ -86,8 +87,8 @@ Commands:
                                  stores it in the keychain by default).
   pair remove <name>             Remove a pair (keeps its trash).
   pair list                      Show configured pairs.
-  daemon [<pair>...]             Synchronize pairs in their intervals until
-                                 stopped.
+  daemon [<pair>...]             Synchronize pairs shortly after changes and
+                                 in their intervals until stopped.
   service install|uninstall|status
                                  Start "daemon" automatically after log in
                                  (per user, no admin rights needed).
@@ -110,6 +111,8 @@ Options:
     )}).
   --interval <duration>          Synchronization interval of a pair, e.g.
                                  "30s", "10m" (default) or "2h".
+  --no-watch                     Synchronize a pair only in its interval, not
+                                 shortly after file system changes.
   --password <source>            Password source of a pair: "keychain"
                                  (default), "prompt" or "environment".
                                  "--passfile" and "--extpass" configure a
@@ -165,6 +168,7 @@ export interface Dependencies {
     service: Service
     // Stops a running daemon (defaults to SIGINT and SIGTERM).
     signal?: AbortSignal
+    watchPair: typeof watchPair
 }
 
 class UsageError extends Error {
@@ -245,6 +249,8 @@ export const run = async (
 
     try {
         const {positionals, values} = parseArgs({
+            // NOTE: Allows "--no-watch".
+            allowNegative: true,
             allowPositionals: true,
             args: argv,
             options: {
@@ -259,7 +265,8 @@ export const run = async (
                 'trash-days': {type: 'string'},
                 interval: {type: 'string'},
                 password: {type: 'string'},
-                version: {short: 'v', type: 'boolean'}
+                version: {short: 'v', type: 'boolean'},
+                watch: {type: 'boolean'}
             }
         })
 
@@ -435,7 +442,8 @@ export const run = async (
                     excludes: [...pair.excludes, ...values.exclude ?? []],
                     plaintext: resolve(pair.plaintext),
                     trashDays: trashDays ?? pair.trashDays,
-                    vault: resolve(pair.vault)
+                    vault: resolve(pair.vault),
+                    watch: values.watch ?? pair.watch
                 }
             })
         }
@@ -552,7 +560,8 @@ export const run = async (
                     plaintext,
                     trashDays:
                         parseTrashDays() ?? DEFAULT_TRASH_RETENTION_IN_DAYS,
-                    vault
+                    vault,
+                    watch: false
                 }]
             } else if (parameters.length < 2)
                 pairs = await getPairs(parameters)
@@ -612,6 +621,7 @@ export const run = async (
                         '    password:  ' +
                         `${JSON.stringify(pair.password)}\n` +
                         `    trash:     ${String(pair.trashDays)} days\n` +
+                        `    watch:     ${pair.watch ? 'yes' : 'no'}\n` +
                         `    excludes:  ${pair.excludes.join(' ')}`
                     )
                 }
@@ -694,7 +704,10 @@ export const run = async (
                     ...(values['trash-days'] === undefined ?
                         {} :
                         {trashDays: parseTrashDays()}),
-                    vault
+                    vault,
+                    ...(values.watch === undefined ?
+                        {} :
+                        {watch: values.watch})
                 }
                 // Validates the complete pair before saving.
                 resolvePair(settings, name)
@@ -743,6 +756,7 @@ export const run = async (
                     log,
                     pairs,
                     signal,
+                    watchPair: givenDependencies.watchPair ?? watchPair,
                     synchronizePair: async (pair) => {
                         const result = await synchronizePair(
                             pair,

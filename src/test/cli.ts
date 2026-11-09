@@ -339,6 +339,7 @@ describe('cli', () => {
             expect(listing.logs[0]).toContain('password:  "keychain"')
             expect(listing.logs[0]).toContain('.DS_Store')
             expect(listing.logs[0]).toContain('*.tmp')
+            expect(listing.logs[0]).toContain('watch:     yes')
 
             // Password comes from the keychain now.
             await writeFile(join(temporaryDirectory, 'note.txt'), 'note')
@@ -363,7 +364,7 @@ describe('cli', () => {
             expect(daemon.code).toStrictEqual(0)
             expect(daemon.logs.map((line) => line.replace(/^\S+ /, '')))
                 .toStrictEqual([
-                    'Started synchronizing "docs" every 3600s.',
+                    'Started synchronizing "docs" every 3600s and on changes.',
                     '"docs": encrypt b.txt',
                     '"docs": Applied 1 changes.',
                     'Stopped.'
@@ -390,10 +391,12 @@ describe('cli', () => {
             process.env.GOCRYPTFS_PASSWORD = 'secret'
             expect((await runWithPairs([
                 'pair', 'add', 'separate', plain, separateVault,
-                '--config', configuration, '--password', 'environment'
+                '--config', configuration, '--password', 'environment',
+                '--no-watch'
             ])).code).toStrictEqual(0)
-            expect((await runWithPairs(['pair', 'list'])).logs[0])
-                .toContain(`config:    ${configuration}`)
+            const listing = (await runWithPairs(['pair', 'list'])).logs[0]
+            expect(listing).toContain(`config:    ${configuration}`)
+            expect(listing).toContain('watch:     no')
             expect((await runWithPairs(['sync', 'separate'])).code)
                 .toStrictEqual(0)
 

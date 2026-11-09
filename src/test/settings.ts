@@ -79,7 +79,8 @@ describe('settings', () => {
                     password: {file: '/password'},
                     plaintext: '/plain',
                     trashDays: 3,
-                    vault: '/vault'
+                    vault: '/vault',
+                    watch: false
                 },
                 plain: {plaintext: '/a', vault: '/b'}
             }
@@ -92,7 +93,8 @@ describe('settings', () => {
             password: 'prompt',
             plaintext: '/a',
             trashDays: 30,
-            vault: '/b'
+            vault: '/b',
+            watch: true
         })
         expect(resolvePair(settings, 'custom')).toStrictEqual({
             excludes: [...DEFAULT_EXCLUDES, '*.tmp'],
@@ -101,10 +103,15 @@ describe('settings', () => {
             password: {file: '/password'},
             plaintext: '/plain',
             trashDays: 3,
-            vault: '/vault'
+            vault: '/vault',
+            watch: false
         })
         expect(() => resolvePair(settings, 'missing'))
             .toThrow('Unknown pair "missing" (known: custom, plain).')
+
+        settings.pairs.plain.watch = 'yes' as unknown as boolean
+        expect(() => resolvePair(settings, 'plain'))
+            .toThrow('"watch" has to be true or false')
     })
     test('loadSettings / saveSettings', async () => {
         const configurationDirectory = join(directory, 'configuration')
