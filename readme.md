@@ -119,12 +119,25 @@ developer:
 With Node.js 26 or newer the package also runs directly via
 `npx gocryptfs-standalone …`.
 <!--deDE:
-    Mit Node.js 26 oder neuer läuft das Paket auch direkt über `npx
-    gocryptfs-standalone …`.
+    Mit Node.js 26 oder neuer läuft das Paket auch direkt über
+    `npx gocryptfs-standalone …`.
 -->
 <!--frFR:
     Avec Node.js 26 ou plus récent, le paquet s'exécute aussi directement
     via `npx gocryptfs-standalone …`.
+-->
+
+On Arch Linux the included "PKGBUILD" builds a package via
+"makepkg --install", installing "gocryptfs-standalone" into "/usr/bin".
+<!--deDE:
+    Unter Arch Linux baut das enthaltene "PKGBUILD" über
+    "makepkg --install" ein Paket, das "gocryptfs-standalone" nach
+    "/usr/bin" installiert.
+-->
+<!--frFR:
+    Sous Arch Linux, le "PKGBUILD" inclus construit un paquet via
+    "makepkg --install", qui installe "gocryptfs-standalone" dans
+    "/usr/bin".
 -->
 
 <!--|deDE:Verwendung-->
