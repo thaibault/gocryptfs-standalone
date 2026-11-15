@@ -12,76 +12,38 @@ import { Readable as __WEBPACK_EXTERNAL_MODULE_stream_Readable__ } from "stream"
 import { pipeline as __WEBPACK_EXTERNAL_MODULE_stream_promises_4e08051e_pipeline__ } from "stream/promises";
 /******/ var __webpack_modules__ = ([
 /* 0 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+/***/ ((module) => {
 
 
-var NATIVE_BIND = __webpack_require__(3);
-
-var FunctionPrototype = Function.prototype;
-var call = FunctionPrototype.call;
-// eslint-disable-next-line es/no-function-prototype-bind -- safe
-var uncurryThisWithBind = NATIVE_BIND && FunctionPrototype.bind.bind(call, call);
-
-module.exports = NATIVE_BIND ? uncurryThisWithBind : function (fn) {
-  return function () {
-    return call.apply(fn, arguments);
-  };
+// we can't use just `it == null` since of `document.all` special case
+// https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot-aec
+module.exports = function (it) {
+  return it === null || it === undefined;
 };
 
 
 /***/ }),
 /* 1 */
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
-module.exports = function (exec) {
-  try {
-    return !!exec();
-  } catch (error) {
-    return true;
-  }
+var trunc = __webpack_require__(8);
+
+// `ToIntegerOrInfinity` abstract operation
+// https://tc39.es/ecma262/#sec-tointegerorinfinity
+module.exports = function (argument) {
+  var number = +argument;
+  // eslint-disable-next-line no-self-compare -- NaN check
+  return number !== number || number === 0 ? 0 : trunc(number);
 };
 
 
 /***/ }),
 /* 2 */
-/***/ ((module) => {
-
-
-// https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot
-var documentAll = typeof document == 'object' && document.all;
-
-// `IsCallable` abstract operation
-// https://tc39.es/ecma262/#sec-iscallable
-// eslint-disable-next-line unicorn/no-typeof-undefined -- required for testing
-module.exports = typeof documentAll == 'undefined' && documentAll !== undefined ? function (argument) {
-  return typeof argument == 'function' || argument === documentAll;
-} : function (argument) {
-  return typeof argument == 'function';
-};
-
-
-/***/ }),
-/* 3 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
-var fails = __webpack_require__(1);
-
-module.exports = !fails(function () {
-  // eslint-disable-next-line es/no-function-prototype-bind -- safe
-  var test = function () { /* empty */ }.bind();
-  // eslint-disable-next-line no-prototype-builtins -- safe
-  return typeof test != 'function' || test.hasOwnProperty('prototype');
-});
-
-
-/***/ }),
-/* 4 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var isNullOrUndefined = __webpack_require__(5);
+var isNullOrUndefined = __webpack_require__(0);
 
 var $TypeError = TypeError;
 
@@ -94,131 +56,23 @@ module.exports = function (it) {
 
 
 /***/ }),
-/* 5 */
+/* 3 */
 /***/ ((module) => {
 
 
-// we can't use just `it == null` since of `document.all` special case
-// https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot-aec
-module.exports = function (it) {
-  return it === null || it === undefined;
+// `GetIteratorDirect(obj)` abstract operation
+// https://tc39.es/ecma262/#sec-getiteratordirect
+module.exports = function (obj) {
+  return {
+    iterator: obj,
+    next: obj.next,
+    done: false
+  };
 };
 
 
 /***/ }),
-/* 6 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var trunc = __webpack_require__(16);
-
-// `ToIntegerOrInfinity` abstract operation
-// https://tc39.es/ecma262/#sec-tointegerorinfinity
-module.exports = function (argument) {
-  var number = +argument;
-  // eslint-disable-next-line no-self-compare -- NaN check
-  return number !== number || number === 0 ? 0 : trunc(number);
-};
-
-
-/***/ }),
-/* 7 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var uncurryThis = __webpack_require__(0);
-
-var id = 0;
-var postfix = Math.random();
-var toString = uncurryThis(1.1.toString);
-
-module.exports = function (key) {
-  return 'Symbol(' + (key === undefined ? '' : key) + ')_' + toString(++id + postfix, 36);
-};
-
-
-/***/ }),
-/* 8 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var uncurryThis = __webpack_require__(0);
-var fails = __webpack_require__(1);
-var classof = __webpack_require__(9);
-
-var $Object = Object;
-var split = uncurryThis(''.split);
-
-// fallback for non-array-like ES3 and non-enumerable old V8 strings
-module.exports = fails(function () {
-  // throws an error in rhino, see https://github.com/mozilla/rhino/issues/346
-  // eslint-disable-next-line no-prototype-builtins -- safe
-  return !$Object('z').propertyIsEnumerable(0);
-}) ? function (it) {
-  return classof(it) === 'String' ? split(it, '') : $Object(it);
-} : $Object;
-
-
-/***/ }),
-/* 9 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var uncurryThis = __webpack_require__(0);
-
-var toString = uncurryThis({}.toString);
-var stringSlice = uncurryThis(''.slice);
-
-module.exports = function (it) {
-  return stringSlice(toString(it), 8, -1);
-};
-
-
-/***/ }),
-/* 10 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var uncurryThis = __webpack_require__(0);
-
-module.exports = uncurryThis({}.isPrototypeOf);
-
-
-/***/ }),
-/* 11 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var aCallable = __webpack_require__(12);
-var isNullOrUndefined = __webpack_require__(5);
-
-// `GetMethod` abstract operation
-// https://tc39.es/ecma262/#sec-getmethod
-module.exports = function (V, P) {
-  var func = V[P];
-  return isNullOrUndefined(func) ? undefined : aCallable(func);
-};
-
-
-/***/ }),
-/* 12 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-
-var isCallable = __webpack_require__(2);
-var tryToString = __webpack_require__(13);
-
-var $TypeError = TypeError;
-
-// `Assert: IsCallable(argument) is true`
-module.exports = function (argument) {
-  if (isCallable(argument)) return argument;
-  throw new $TypeError(tryToString(argument) + ' is not a function');
-};
-
-
-/***/ }),
-/* 13 */
+/* 4 */
 /***/ ((module) => {
 
 
@@ -234,19 +88,11 @@ module.exports = function (argument) {
 
 
 /***/ }),
-/* 14 */
-/***/ ((module) => {
-
-
-module.exports = false;
-
-
-/***/ }),
-/* 15 */
+/* 5 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
-var requireObjectCoercible = __webpack_require__(4);
+var requireObjectCoercible = __webpack_require__(2);
 
 var $Object = Object;
 
@@ -258,7 +104,61 @@ module.exports = function (argument) {
 
 
 /***/ }),
-/* 16 */
+/* 6 */
+/***/ ((module) => {
+
+
+// Should throw an error on invalid iterator
+// https://issues.chromium.org/issues/336839115
+module.exports = function (methodName, argument) {
+  // eslint-disable-next-line es/no-iterator -- required for testing
+  var method = typeof Iterator == 'function' && Iterator.prototype[methodName];
+  if (method) try {
+    method.call({ next: null }, argument).next();
+  } catch (error) {
+    return true;
+  }
+};
+
+
+/***/ }),
+/* 7 */
+/***/ ((module) => {
+
+
+// Should get iterator record of a set-like object before cloning this
+// https://bugs.webkit.org/show_bug.cgi?id=289430
+module.exports = function (METHOD_NAME) {
+  try {
+    // eslint-disable-next-line es/no-set -- needed for test
+    var baseSet = new Set();
+    var setLike = {
+      size: 0,
+      has: function () { return true; },
+      keys: function () {
+        // eslint-disable-next-line es/no-object-defineproperty -- needed for test
+        return Object.defineProperty({}, 'next', {
+          get: function () {
+            baseSet.clear();
+            baseSet.add(4);
+            return function () {
+              return { done: true };
+            };
+          }
+        });
+      }
+    };
+    var result = baseSet[METHOD_NAME](setLike);
+
+    return result.size === 1 && result.values().next().value === 4;
+  } catch (error) {
+    return false;
+  }
+};
+
+
+/***/ }),
+/* 8 */
 /***/ ((module) => {
 
 
@@ -275,11 +175,11 @@ module.exports = Math.trunc || function trunc(x) {
 
 
 /***/ }),
-/* 17 */
+/* 9 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
-var toIntegerOrInfinity = __webpack_require__(6);
+var toIntegerOrInfinity = __webpack_require__(1);
 
 var min = Math.min;
 
@@ -292,40 +192,57 @@ module.exports = function (argument) {
 
 
 /***/ }),
-/* 18 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+/* 10 */
+/***/ ((module) => {
 
 
-var fails = __webpack_require__(1);
-var isCallable = __webpack_require__(2);
+var $TypeError = TypeError;
+var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF; // 2 ** 53 - 1 == 9007199254740991
 
-var replacement = /#|\.prototype\./;
-
-var isForced = function (feature, detection) {
-  var value = data[normalize(feature)];
-  return value === POLYFILL ? true
-    : value === NATIVE ? false
-    : isCallable(detection) ? fails(detection)
-    : !!detection;
+module.exports = function (it) {
+  if (it > MAX_SAFE_INTEGER) throw new $TypeError('Maximum allowed index exceeded');
+  return it;
 };
-
-var normalize = isForced.normalize = function (string) {
-  return String(string).replace(replacement, '.').toLowerCase();
-};
-
-var data = isForced.data = {};
-var NATIVE = isForced.NATIVE = 'N';
-var POLYFILL = isForced.POLYFILL = 'P';
-
-module.exports = isForced;
 
 
 /***/ }),
-/* 19 */
+/* 11 */
+/***/ ((module) => {
+
+
+// `CreateIterResultObject` abstract operation
+// https://tc39.es/ecma262/#sec-createiterresultobject
+module.exports = function (value, done) {
+  return { value: value, done: done };
+};
+
+
+/***/ }),
+/* 12 */
+/***/ ((module) => {
+
+
+// release references held by exhausted / closed iterator helpers to allow GC of the source chain
+module.exports = function (state) {
+  state.iterator = state.next = state.nextHandler = state.mapper = state.predicate = state.inner =
+    state.iterables = state.iters = state.openIters = state.padding = state.finishResults = state.buffer = null;
+};
+
+
+/***/ }),
+/* 13 */
+/***/ ((module) => {
+
+
+module.exports = Object.create ? Object.create(null) : {};
+
+
+/***/ }),
+/* 14 */
 /***/ ((module, __unused_webpack___webpack_exports__, __webpack_require__) => {
 
 __webpack_require__.a(module, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
-/* harmony import */ var _cli_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(20);
+/* harmony import */ var _cli_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
 // #!/usr/bin/env babel-node
 // -*- coding: utf-8 -*-
 /** @module gocryptfs-standalone *//* !
@@ -338,8 +255,8 @@ __webpack_require__.a(module, async (__webpack_handle_async_dependencies__, __we
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 // endregion
@@ -348,7 +265,7 @@ __webpack_async_result__();
 } catch(e) { __webpack_async_result__(e); } }, 1);
 
 /***/ }),
-/* 20 */
+/* 15 */
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 
@@ -358,6 +275,35 @@ __webpack_require__.d(__webpack_exports__, {
 });
 
 // UNUSED EXPORTS: EXIT_CODES, USAGE, defaultOutput, describeAction, findOverlappingPairs, isNested
+
+// MODULE: ./node_modules/core-js/internals/a-callable.js
+var a_callable_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var isCallable = (is_callable_namespaceFn());
+var tryToString = (try_to_string_namespaceFn());
+
+var $TypeError = TypeError;
+
+// `Assert: IsCallable(argument) is true`
+module.exports = function (argument) {
+  if (isCallable(argument)) return argument;
+  throw new $TypeError(tryToString(argument) + ' is not a function');
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/a-set.js
+var a_set_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var has = (set_helpers_namespaceFn().has);
+
+// Perform ? RequireInternalSlot(M, [[SetData]])
+module.exports = function (it) {
+  has(it);
+  return it;
+};
+
+});
 
 // MODULE: ./node_modules/core-js/internals/add-to-unscopables.js
 var add_to_unscopables_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -381,6 +327,20 @@ if (ArrayPrototype[UNSCOPABLES] === undefined) {
 // add a key to Array.prototype[@@unscopables]
 module.exports = function (key) {
   ArrayPrototype[UNSCOPABLES][key] = true;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/an-instance.js
+var an_instance_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var isPrototypeOf = (object_is_prototype_of_namespaceFn());
+
+var $TypeError = TypeError;
+
+module.exports = function (it, Prototype) {
+  if (isPrototypeOf(Prototype, it)) return it;
+  throw new $TypeError('Incorrect invocation');
 };
 
 });
@@ -440,6 +400,104 @@ module.exports = {
 
 });
 
+// MODULE: ./node_modules/core-js/internals/array-set-length.js
+var array_set_length_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var DESCRIPTORS = (descriptors_namespaceFn());
+var isArray = (is_array_namespaceFn());
+
+var $TypeError = TypeError;
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+
+// Safari < 13 does not throw an error in this case
+var SILENT_ON_NON_WRITABLE_LENGTH_SET = DESCRIPTORS && !function () {
+  // makes no sense without proper strict mode support
+  if (this !== undefined) return true;
+  try {
+    // eslint-disable-next-line es/no-object-defineproperty -- safe
+    Object.defineProperty([], 'length', { writable: false }).length = 1;
+  } catch (error) {
+    return error instanceof TypeError;
+  }
+}();
+
+module.exports = SILENT_ON_NON_WRITABLE_LENGTH_SET ? function (O, length) {
+  if (isArray(O) && !getOwnPropertyDescriptor(O, 'length').writable) {
+    throw new $TypeError('Cannot set read only .length');
+  } return O.length = length;
+} : function (O, length) {
+  return O.length = length;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/call-with-safe-iteration-closing.js
+var call_with_safe_iteration_closing_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var anObject = (an_object_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+
+// call something on iterator step with safe closing on error
+module.exports = function (iterator, fn, value, ENTRIES) {
+  try {
+    return ENTRIES ? fn(anObject(value)[0], value[1]) : fn(value);
+  } catch (error) {
+    iteratorClose(iterator, 'throw', error);
+  }
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/classof-raw.js
+var classof_raw_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+var toString = uncurryThis({}.toString);
+var stringSlice = uncurryThis(''.slice);
+
+module.exports = function (it) {
+  return stringSlice(toString(it), 8, -1);
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/classof.js
+var classof_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var TO_STRING_TAG_SUPPORT = (to_string_tag_support_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var classofRaw = (classof_raw_namespaceFn());
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+
+var TO_STRING_TAG = wellKnownSymbol('toStringTag');
+var $Object = Object;
+
+// ES3 wrong here
+var CORRECT_ARGUMENTS = classofRaw(function () { return arguments; }()) === 'Arguments';
+
+// fallback for IE11 Script Access Denied error
+var tryGet = function (it, key) {
+  try {
+    return it[key];
+  } catch (error) { /* empty */ }
+};
+
+// getting tag from ES6+ `Object.prototype.toString`
+module.exports = TO_STRING_TAG_SUPPORT ? classofRaw : function (it) {
+  var O, tag, result;
+  return it === undefined ? 'Undefined' : it === null ? 'Null'
+    // @@toStringTag case
+    : typeof (tag = tryGet(O = $Object(it), TO_STRING_TAG)) == 'string' ? tag
+    // builtinTag case
+    : CORRECT_ARGUMENTS ? classofRaw(O)
+    // ES3 arguments fallback
+    : (result = classofRaw(O)) === 'Object' && isCallable(O.callee) ? 'Arguments' : result;
+};
+
+});
+
 // MODULE: ./node_modules/core-js/internals/copy-constructor-properties.js
 var copy_constructor_properties_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
 
@@ -461,6 +519,25 @@ module.exports = function (target, source, exceptions) {
 };
 
 });
+
+// MODULE: ./node_modules/core-js/internals/correct-prototype-getter.js
+var correct_prototype_getter_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var fails = (fails_namespaceFn());
+
+module.exports = !fails(function () {
+  function F() { /* empty */ }
+  F.prototype.constructor = null;
+  // eslint-disable-next-line es/no-object-getprototypeof -- required for testing
+  return Object.getPrototypeOf(new F()) !== F.prototype;
+});
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/create-iter-result-object.js
+var create_iter_result_object_namespaceFn = () => {
+	return __webpack_require__(11);
+};
 
 // MODULE: ./node_modules/core-js/internals/create-non-enumerable-property.js
 var create_non_enumerable_property_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -488,6 +565,34 @@ module.exports = function (bitmap, value) {
     writable: !(bitmap & 4),
     value: value
   };
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/create-property.js
+var create_property_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var DESCRIPTORS = (descriptors_namespaceFn());
+var definePropertyModule = (object_define_property_namespaceFn());
+var createPropertyDescriptor = (create_property_descriptor_namespaceFn());
+
+module.exports = function (object, key, value) {
+  if (DESCRIPTORS) definePropertyModule.f(object, key, createPropertyDescriptor(0, value));
+  else object[key] = value;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/define-built-in-accessor.js
+var define_built_in_accessor_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var makeBuiltIn = (make_built_in_namespaceFn());
+var defineProperty = (object_define_property_namespaceFn());
+
+module.exports = function (target, name, descriptor) {
+  if (descriptor.get) makeBuiltIn(descriptor.get, name, { getter: true });
+  if (descriptor.set) makeBuiltIn(descriptor.set, name, { setter: true });
+  return defineProperty.f(target, name, descriptor);
 };
 
 });
@@ -521,6 +626,18 @@ module.exports = function (O, key, value, options) {
       writable: !options.nonWritable
     });
   } return O;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/define-built-ins.js
+var define_built_ins_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var defineBuiltIn = (define_built_in_namespaceFn());
+
+module.exports = function (target, src, options) {
+  for (var key in src) defineBuiltIn(target, key, src[key], options);
+  return target;
 };
 
 });
@@ -571,6 +688,11 @@ module.exports = function (it) {
 };
 
 });
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/does-not-exceed-safe-integer.js
+var does_not_exceed_safe_integer_namespaceFn = () => {
+	return __webpack_require__(10);
+};
 
 // MODULE: ./node_modules/core-js/internals/enum-bug-keys.js
 var enum_bug_keys_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -693,15 +815,51 @@ module.exports = function (options, source) {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/fails.js
-var fails_namespaceFn = () => {
-	return __webpack_require__(1);
+// MODULE: ./node_modules/core-js/internals/fails.js
+var fails_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+module.exports = function (exec) {
+  try {
+    return !!exec();
+  } catch (error) {
+    return true;
+  }
 };
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/function-bind-native.js
-var function_bind_native_namespaceFn = () => {
-	return __webpack_require__(3);
+});
+
+// MODULE: ./node_modules/core-js/internals/function-bind-context.js
+var function_bind_context_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_clause_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var NATIVE_BIND = (function_bind_native_namespaceFn());
+
+var bind = uncurryThis(uncurryThis.bind);
+
+// optional / simple context binding
+module.exports = function (fn, that) {
+  aCallable(fn);
+  return that === undefined ? fn : NATIVE_BIND ? bind(fn, that) : function (/* ...args */) {
+    return fn.apply(that, arguments);
+  };
 };
+
+});
+
+// MODULE: ./node_modules/core-js/internals/function-bind-native.js
+var function_bind_native_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var fails = (fails_namespaceFn());
+
+module.exports = !fails(function () {
+  // eslint-disable-next-line es/no-function-prototype-bind -- safe
+  var test = function () { /* empty */ }.bind();
+  // eslint-disable-next-line no-prototype-builtins -- safe
+  return typeof test != 'function' || test.hasOwnProperty('prototype');
+});
+
+});
 
 // MODULE: ./node_modules/core-js/internals/function-call.js
 var function_call_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -739,10 +897,53 @@ module.exports = {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/function-uncurry-this.js
-var function_uncurry_this_namespaceFn = () => {
-	return __webpack_require__(0);
+// MODULE: ./node_modules/core-js/internals/function-uncurry-this-accessor.js
+var function_uncurry_this_accessor_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+
+module.exports = function (object, key, method) {
+  try {
+    // eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+    return uncurryThis(aCallable(Object.getOwnPropertyDescriptor(object, key)[method]));
+  } catch (error) { /* empty */ }
 };
+
+});
+
+// MODULE: ./node_modules/core-js/internals/function-uncurry-this-clause.js
+var function_uncurry_this_clause_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var classofRaw = (classof_raw_namespaceFn());
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+module.exports = function (fn) {
+  // Nashorn bug:
+  //   https://github.com/zloirock/core-js/issues/1128
+  //   https://github.com/zloirock/core-js/issues/1130
+  if (classofRaw(fn) === 'Function') return uncurryThis(fn);
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/function-uncurry-this.js
+var function_uncurry_this_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var NATIVE_BIND = (function_bind_native_namespaceFn());
+
+var FunctionPrototype = Function.prototype;
+var call = FunctionPrototype.call;
+// eslint-disable-next-line es/no-function-prototype-bind -- safe
+var uncurryThisWithBind = NATIVE_BIND && FunctionPrototype.bind.bind(call, call);
+
+module.exports = NATIVE_BIND ? uncurryThisWithBind : function (fn) {
+  return function () {
+    return call.apply(fn, arguments);
+  };
+};
+
+});
 
 // MODULE: ./node_modules/core-js/internals/get-built-in.js
 var get_built_in_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -760,10 +961,108 @@ module.exports = function (namespace, method) {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/get-method.js
-var get_method_namespaceFn = () => {
-	return __webpack_require__(11);
+// EXTERNAL MODULE: ./node_modules/core-js/internals/get-iterator-direct.js
+var get_iterator_direct_namespaceFn = () => {
+	return __webpack_require__(3);
 };
+
+// MODULE: ./node_modules/core-js/internals/get-iterator-internal.js
+var get_iterator_internal_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var call = (function_call_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var tryToString = (try_to_string_namespaceFn());
+var getIteratorMethod = (get_iterator_method_internal_namespaceFn());
+
+var $TypeError = TypeError;
+
+module.exports = function (argument, usingIterator) {
+  var iteratorMethod = arguments.length < 2 ? getIteratorMethod(argument) : usingIterator;
+  if (isCallable(iteratorMethod)) return anObject(call(iteratorMethod, argument));
+  throw new $TypeError(tryToString(argument) + ' is not iterable');
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/get-iterator-method-internal.js
+var get_iterator_method_internal_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var classof = (classof_raw_namespaceFn());
+var isNullOrUndefined = (is_null_or_undefined_namespaceFn());
+var getMethod = (get_method_namespaceFn());
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+
+var ITERATOR = wellKnownSymbol('iterator');
+var ArrayPrototype = Array.prototype;
+
+module.exports = function (it) {
+  if (!isNullOrUndefined(it)) return getMethod(it, ITERATOR)
+    || getMethod(it, '@@iterator')
+    || (classof(it) === 'Arguments' ? ArrayPrototype[ITERATOR] : undefined);
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/get-method.js
+var get_method_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aCallable = (a_callable_namespaceFn());
+var isNullOrUndefined = (is_null_or_undefined_namespaceFn());
+
+// `GetMethod` abstract operation
+// https://tc39.es/ecma262/#sec-getmethod
+module.exports = function (V, P) {
+  var func = V[P];
+  return isNullOrUndefined(func) ? undefined : aCallable(func);
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/get-set-record.js
+var get_set_record_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aCallable = (a_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var call = (function_call_namespaceFn());
+var toIntegerOrInfinity = (to_integer_or_infinity_namespaceFn());
+var getIteratorDirect = (get_iterator_direct_namespaceFn());
+
+var INVALID_SIZE = 'Invalid size';
+var $RangeError = RangeError;
+var $TypeError = TypeError;
+var max = Math.max;
+
+var SetRecord = function (set, intSize) {
+  this.set = set;
+  this.size = max(intSize, 0);
+  this.has = aCallable(set.has);
+  this.keys = aCallable(set.keys);
+};
+
+SetRecord.prototype = {
+  getIterator: function () {
+    return getIteratorDirect(anObject(call(this.keys, this.set)));
+  },
+  includes: function (it) {
+    return call(this.has, this.set, it);
+  }
+};
+
+// `GetSetRecord` abstract operation
+// https://tc39.es/proposal-set-methods/#sec-getsetrecord
+module.exports = function (obj) {
+  anObject(obj);
+  var numSize = +obj.size;
+  // NOTE: If size is undefined, then numSize will be NaN
+  // eslint-disable-next-line no-self-compare -- NaN check
+  if (numSize !== numSize) throw new $TypeError(INVALID_SIZE);
+  var intSize = toIntegerOrInfinity(numSize);
+  if (intSize < 0) throw new $RangeError(INVALID_SIZE);
+  return new SetRecord(obj, intSize);
+};
+
+});
 
 // MODULE: ./node_modules/core-js/internals/global-this.js
 var global_this_namespaceFn = /*#__PURE__*/__webpack_require__.cw(function(module) {
@@ -836,10 +1135,26 @@ module.exports = !DESCRIPTORS && !fails(function () {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/indexed-object.js
-var indexed_object_namespaceFn = () => {
-	return __webpack_require__(8);
-};
+// MODULE: ./node_modules/core-js/internals/indexed-object.js
+var indexed_object_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+var fails = (fails_namespaceFn());
+var classof = (classof_raw_namespaceFn());
+
+var $Object = Object;
+var split = uncurryThis(''.split);
+
+// fallback for non-array-like ES3 and non-enumerable old V8 strings
+module.exports = fails(function () {
+  // throws an error in rhino, see https://github.com/mozilla/rhino/issues/346
+  // eslint-disable-next-line no-prototype-builtins -- safe
+  return !$Object('z').propertyIsEnumerable(0);
+}) ? function (it) {
+  return classof(it) === 'String' ? split(it, '') : $Object(it);
+} : $Object;
+
+});
 
 // MODULE: ./node_modules/core-js/internals/inspect-source.js
 var inspect_source_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -937,14 +1252,84 @@ module.exports = {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/is-callable.js
-var is_callable_namespaceFn = () => {
-	return __webpack_require__(2);
+// MODULE: ./node_modules/core-js/internals/is-array-iterator-method.js
+var is_array_iterator_method_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+var Iterators = (iterators_namespaceFn());
+
+var ITERATOR = wellKnownSymbol('iterator');
+var ArrayPrototype = Array.prototype;
+
+// check on default Array iterator
+module.exports = function (it) {
+  return it !== undefined && (Iterators.Array === it || ArrayPrototype[ITERATOR] === it);
 };
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/is-forced.js
-var is_forced_namespaceFn = () => {
-	return __webpack_require__(18);
+});
+
+// MODULE: ./node_modules/core-js/internals/is-array.js
+var is_array_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var classof = (classof_raw_namespaceFn());
+
+// `IsArray` abstract operation
+// https://tc39.es/ecma262/#sec-isarray
+// eslint-disable-next-line es/no-array-isarray -- safe
+module.exports = Array.isArray || function isArray(argument) {
+  return classof(argument) === 'Array';
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/is-callable.js
+var is_callable_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+// https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot
+var documentAll = typeof document == 'object' && document.all;
+
+// `IsCallable` abstract operation
+// https://tc39.es/ecma262/#sec-iscallable
+// eslint-disable-next-line unicorn/no-typeof-undefined -- required for testing
+module.exports = typeof documentAll == 'undefined' && documentAll !== undefined ? function (argument) {
+  return typeof argument == 'function' || argument === documentAll;
+} : function (argument) {
+  return typeof argument == 'function';
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/is-forced.js
+var is_forced_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var fails = (fails_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+
+var replacement = /#|\.prototype\./;
+
+var isForced = function (feature, detection) {
+  var value = data[normalize(feature)];
+  return value === POLYFILL ? true
+    : value === NATIVE ? false
+    : isCallable(detection) ? fails(detection)
+    : !!detection;
+};
+
+var normalize = isForced.normalize = function (string) {
+  return String(string).replace(replacement, '.').toLowerCase();
+};
+
+var data = isForced.data = {};
+var NATIVE = isForced.NATIVE = 'N';
+var POLYFILL = isForced.POLYFILL = 'P';
+
+module.exports = isForced;
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/is-null-or-undefined.js
+var is_null_or_undefined_namespaceFn = () => {
+	return __webpack_require__(0);
 };
 
 // MODULE: ./node_modules/core-js/internals/is-object.js
@@ -958,10 +1343,26 @@ module.exports = function (it) {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/is-pure.js
-var is_pure_namespaceFn = () => {
-	return __webpack_require__(14);
+// MODULE: ./node_modules/core-js/internals/is-pure.js
+var is_pure_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+module.exports = false;
+
+});
+
+// MODULE: ./node_modules/core-js/internals/is-raw-json.js
+var is_raw_json_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var isObject = (is_object_namespaceFn());
+var getInternalState = (internal_state_namespaceFn().get);
+
+module.exports = function isRawJSON(O) {
+  if (!isObject(O)) return false;
+  var state = getInternalState(O);
+  return !!state && state.type === 'RawJSON';
 };
+
+});
 
 // MODULE: ./node_modules/core-js/internals/is-symbol.js
 var is_symbol_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -981,6 +1382,349 @@ module.exports = USE_SYMBOL_AS_UID ? function (it) {
 };
 
 });
+
+// MODULE: ./node_modules/core-js/internals/iterate-simple.js
+var iterate_simple_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var call = (function_call_namespaceFn());
+
+module.exports = function (record, fn, ITERATOR_INSTEAD_OF_RECORD) {
+  var iterator = ITERATOR_INSTEAD_OF_RECORD ? record : record.iterator;
+  var next = record.next;
+  var step, result;
+  while (!(step = call(next, iterator)).done) {
+    result = fn(step.value);
+    if (result !== undefined) return result;
+  }
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/iterate.js
+var iterate_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var bind = (function_bind_context_namespaceFn());
+var call = (function_call_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var tryToString = (try_to_string_namespaceFn());
+var isArrayIteratorMethod = (is_array_iterator_method_namespaceFn());
+var lengthOfArrayLike = (length_of_array_like_namespaceFn());
+var isPrototypeOf = (object_is_prototype_of_namespaceFn());
+var getIterator = (get_iterator_internal_namespaceFn());
+var getIteratorMethod = (get_iterator_method_internal_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+
+var $TypeError = TypeError;
+
+var Result = function (stopped, result) {
+  this.stopped = stopped;
+  this.result = result;
+};
+
+var ResultPrototype = Result.prototype;
+
+module.exports = function (iterable, unboundFunction, options) {
+  var that = options && options.that;
+  var AS_ENTRIES = !!(options && options.AS_ENTRIES);
+  var IS_RECORD = !!(options && options.IS_RECORD);
+  var IS_ITERATOR = !!(options && options.IS_ITERATOR);
+  var INTERRUPTED = !!(options && options.INTERRUPTED);
+  var fn = bind(unboundFunction, that);
+  var iterator, iterFn, index, length, result, next, step;
+
+  var stop = function (condition) {
+    var $iterator = iterator;
+    iterator = undefined;
+    if ($iterator) iteratorClose($iterator, 'normal');
+    return new Result(true, condition);
+  };
+
+  var callFn = function (value) {
+    if (AS_ENTRIES) {
+      anObject(value);
+      return INTERRUPTED ? fn(value[0], value[1], stop) : fn(value[0], value[1]);
+    } return INTERRUPTED ? fn(value, stop) : fn(value);
+  };
+
+  if (IS_RECORD) {
+    iterator = iterable.iterator;
+  } else if (IS_ITERATOR) {
+    iterator = iterable;
+  } else {
+    iterFn = getIteratorMethod(iterable);
+    if (!iterFn) throw new $TypeError(tryToString(iterable) + ' is not iterable');
+    // optimisation for array iterators
+    if (isArrayIteratorMethod(iterFn)) {
+      for (index = 0, length = lengthOfArrayLike(iterable); length > index; index++) {
+        result = callFn(iterable[index]);
+        if (result && isPrototypeOf(ResultPrototype, result)) return result;
+      } return new Result(false);
+    }
+    iterator = getIterator(iterable, iterFn);
+  }
+
+  next = IS_RECORD ? iterable.next : iterator.next;
+  while (!(step = call(next, iterator)).done) {
+    // `IteratorValue` errors should propagate without closing the iterator
+    var value = step.value;
+    try {
+      result = callFn(value);
+    } catch (error) {
+      if (iterator) iteratorClose(iterator, 'throw', error);
+      else throw error;
+    }
+    if (typeof result == 'object' && result && isPrototypeOf(ResultPrototype, result)) return result;
+  } return new Result(false);
+};
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/iterator-cleanup-state.js
+var iterator_cleanup_state_namespaceFn = () => {
+	return __webpack_require__(12);
+};
+
+// MODULE: ./node_modules/core-js/internals/iterator-close-all.js
+var iterator_close_all_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var iteratorClose = (iterator_close_namespaceFn());
+
+module.exports = function (iters, kind, value) {
+  for (var i = iters.length - 1; i >= 0; i--) {
+    if (iters[i] === undefined) continue;
+    try {
+      value = iteratorClose(iters[i].iterator, kind, value);
+    } catch (error) {
+      kind = 'throw';
+      value = error;
+    }
+  }
+  if (kind === 'throw') throw value;
+  return value;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/iterator-close.js
+var iterator_close_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var call = (function_call_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var getMethod = (get_method_namespaceFn());
+
+module.exports = function (iterator, kind, value) {
+  var innerResult, innerError;
+  anObject(iterator);
+  try {
+    innerResult = getMethod(iterator, 'return');
+    if (!innerResult) {
+      if (kind === 'throw') throw value;
+      return value;
+    }
+    innerResult = call(innerResult, iterator);
+  } catch (error) {
+    innerError = true;
+    innerResult = error;
+  }
+  if (kind === 'throw') throw value;
+  if (innerError) throw innerResult;
+  anObject(innerResult);
+  return value;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/iterator-create-proxy.js
+var iterator_create_proxy_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var call = (function_call_namespaceFn());
+var create = (object_create_namespaceFn());
+var createNonEnumerableProperty = (create_non_enumerable_property_namespaceFn());
+var defineBuiltIns = (define_built_ins_namespaceFn());
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+var InternalStateModule = (internal_state_namespaceFn());
+var getMethod = (get_method_namespaceFn());
+var IteratorPrototype = (iterators_core_namespaceFn().H);
+var createIterResultObject = (create_iter_result_object_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+var iteratorCloseAll = (iterator_close_all_namespaceFn());
+var cleanupState = (iterator_cleanup_state_namespaceFn());
+
+var TO_STRING_TAG = wellKnownSymbol('toStringTag');
+var ITERATOR_HELPER = 'IteratorHelper';
+var WRAP_FOR_VALID_ITERATOR = 'WrapForValidIterator';
+var NORMAL = 'normal';
+var THROW = 'throw';
+var setInternalState = InternalStateModule.set;
+
+var createIteratorProxyPrototype = function (IS_ITERATOR) {
+  var getInternalState = InternalStateModule.getterFor(IS_ITERATOR ? WRAP_FOR_VALID_ITERATOR : ITERATOR_HELPER);
+
+  return defineBuiltIns(create(IteratorPrototype), {
+    next: function next() {
+      var state = getInternalState(this);
+      // for simplification:
+      //   for `%WrapForValidIteratorPrototype%.next` or with `state.returnHandlerResult` our `nextHandler` returns `IterResultObject`
+      //   for `%IteratorHelperPrototype%.next` - just a value
+      if (IS_ITERATOR) return state.nextHandler();
+      if (state.done) return createIterResultObject(undefined, true);
+      try {
+        var result = state.nextHandler();
+        if (state.done) cleanupState(state);
+        return state.returnHandlerResult ? result : createIterResultObject(result, state.done);
+      } catch (error) {
+        state.done = true;
+        cleanupState(state);
+        throw error;
+      }
+    },
+    'return': function () {
+      var state = getInternalState(this);
+      var iterator = state.iterator;
+      var inner = state.inner;
+      var openIters = state.openIters;
+      var done = state.done;
+      state.done = true;
+      if (IS_ITERATOR) {
+        var returnMethod = getMethod(iterator, 'return');
+        return returnMethod ? call(returnMethod, iterator) : createIterResultObject(undefined, true);
+      }
+      cleanupState(state);
+      if (done) return createIterResultObject(undefined, true);
+      if (inner) try {
+        iteratorClose(inner.iterator, NORMAL);
+      } catch (error) {
+        return iteratorClose(iterator, THROW, error);
+      }
+      if (openIters) try {
+        iteratorCloseAll(openIters, NORMAL);
+      } catch (error) {
+        if (iterator) return iteratorClose(iterator, THROW, error);
+        throw error;
+      }
+      if (iterator) iteratorClose(iterator, NORMAL);
+      return createIterResultObject(undefined, true);
+    }
+  });
+};
+
+var WrapForValidIteratorPrototype = createIteratorProxyPrototype(true);
+var IteratorHelperPrototype = createIteratorProxyPrototype(false);
+
+createNonEnumerableProperty(IteratorHelperPrototype, TO_STRING_TAG, 'Iterator Helper');
+
+module.exports = function (nextHandler, IS_ITERATOR, RETURN_HANDLER_RESULT) {
+  var IteratorProxy = function Iterator(record, state) {
+    if (state) {
+      state.iterator = record.iterator;
+      state.next = record.next;
+    } else state = record;
+    state.type = IS_ITERATOR ? WRAP_FOR_VALID_ITERATOR : ITERATOR_HELPER;
+    state.returnHandlerResult = !!RETURN_HANDLER_RESULT;
+    state.nextHandler = nextHandler;
+    state.counter = 0;
+    state.done = false;
+    setInternalState(this, state);
+  };
+
+  IteratorProxy.prototype = IS_ITERATOR ? WrapForValidIteratorPrototype : IteratorHelperPrototype;
+
+  return IteratorProxy;
+};
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/iterator-helper-throws-on-invalid-iterator.js
+var iterator_helper_throws_on_invalid_iterator_namespaceFn = () => {
+	return __webpack_require__(6);
+};
+
+// MODULE: ./node_modules/core-js/internals/iterator-helper-without-closing-on-early-error.js
+var iterator_helper_without_closing_on_early_error_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var globalThis = (global_this_namespaceFn());
+
+// https://github.com/tc39/ecma262/pull/3467
+module.exports = function (METHOD_NAME, ExpectedError) {
+  var Iterator = globalThis.Iterator;
+  var IteratorPrototype = Iterator && Iterator.prototype;
+  var method = IteratorPrototype && IteratorPrototype[METHOD_NAME];
+
+  var CLOSED = false;
+
+  if (method) try {
+    method.call({
+      next: function () { return { done: true }; },
+      'return': function () { CLOSED = true; }
+    }, -1);
+  } catch (error) {
+    // https://bugs.webkit.org/show_bug.cgi?id=291195
+    if (!(error instanceof ExpectedError)) CLOSED = false;
+  }
+
+  if (!CLOSED) return method;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/iterators-core.js
+var iterators_core_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var fails = (fails_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var isObject = (is_object_namespaceFn());
+var create = (object_create_namespaceFn());
+var getPrototypeOf = (object_get_prototype_of_namespaceFn());
+var defineBuiltIn = (define_built_in_namespaceFn());
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+var IS_PURE = (is_pure_namespaceFn());
+
+var ITERATOR = wellKnownSymbol('iterator');
+var BUGGY_SAFARI_ITERATORS = false;
+
+// `%IteratorPrototype%` object
+// https://tc39.es/ecma262/#sec-%iteratorprototype%-object
+var IteratorPrototype, PrototypeOfArrayIteratorPrototype, arrayIterator;
+
+/* eslint-disable es/no-array-prototype-keys -- safe */
+if ([].keys) {
+  arrayIterator = [].keys();
+  // Safari 8 has buggy iterators w/o `next`
+  if (!('next' in arrayIterator)) BUGGY_SAFARI_ITERATORS = true;
+  else {
+    PrototypeOfArrayIteratorPrototype = getPrototypeOf(getPrototypeOf(arrayIterator));
+    if (PrototypeOfArrayIteratorPrototype !== Object.prototype) IteratorPrototype = PrototypeOfArrayIteratorPrototype;
+  }
+}
+
+var NEW_ITERATOR_PROTOTYPE = !isObject(IteratorPrototype) || fails(function () {
+  var test = {};
+  // FF44- legacy iterators case
+  return IteratorPrototype[ITERATOR].call(test) !== test;
+});
+
+if (NEW_ITERATOR_PROTOTYPE) IteratorPrototype = {};
+else if (IS_PURE) IteratorPrototype = create(IteratorPrototype);
+
+// `%IteratorPrototype%[@@iterator]()` method
+// https://tc39.es/ecma262/#sec-%iteratorprototype%-@@iterator
+if (!isCallable(IteratorPrototype[ITERATOR])) {
+  defineBuiltIn(IteratorPrototype, ITERATOR, function () {
+    return this;
+  });
+}
+
+module.exports = {
+  H: IteratorPrototype,
+  ...(/* unused pure expression */ null && (BUGGY_SAFARI_ITERATORS))
+};
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/iterators.js
+var iterators_namespaceFn = () => {
+	return __webpack_require__(13);
+};
 
 // MODULE: ./node_modules/core-js/internals/length-of-array-like.js
 var length_of_array_like_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -1052,6 +1796,42 @@ var makeBuiltIn = module.exports = function (value, name, options) {
 Function.prototype.toString = makeBuiltIn(function toString() {
   return isCallable(this) && getInternalState(this).source || inspectSource(this);
 }, 'toString');
+
+});
+
+// MODULE: ./node_modules/core-js/internals/map-helpers.js
+var map_helpers_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+// eslint-disable-next-line es/no-map -- safe
+var MapPrototype = Map.prototype;
+
+module.exports = {
+  // eslint-disable-next-line es/no-map -- safe
+  Map: Map,
+  set: uncurryThis(MapPrototype.set),
+  get: uncurryThis(MapPrototype.get),
+  has: uncurryThis(MapPrototype.has),
+  remove: uncurryThis(MapPrototype['delete']),
+  proto: MapPrototype
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/native-raw-json.js
+var native_raw_json_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+/* eslint-disable es/no-json -- safe */
+var fails = (fails_namespaceFn());
+
+module.exports = !fails(function () {
+  var unsafeInt = '9007199254740993';
+  // eslint-disable-next-line es/no-json-rawjson -- feature detection
+  var raw = JSON.rawJSON(unsafeInt);
+  // eslint-disable-next-line es/no-json-israwjson -- feature detection
+  return !JSON.isRawJSON(raw) || JSON.stringify(raw) !== unsafeInt;
+});
 
 });
 
@@ -1267,13 +2047,44 @@ exports.f = Object.getOwnPropertyNames || function getOwnPropertyNames(O) {
 
 // EXTERNAL MODULE: ./node_modules/core-js/internals/object-get-own-property-symbols.js
 var object_get_own_property_symbols_namespaceFn = () => {
-	return __webpack_require__(21);
+	return __webpack_require__(16);
 };
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/object-is-prototype-of.js
-var object_is_prototype_of_namespaceFn = () => {
-	return __webpack_require__(10);
+// MODULE: ./node_modules/core-js/internals/object-get-prototype-of.js
+var object_get_prototype_of_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var hasOwn = (has_own_property_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var toObject = (to_object_namespaceFn());
+var sharedKey = (shared_key_namespaceFn());
+var CORRECT_PROTOTYPE_GETTER = (correct_prototype_getter_namespaceFn());
+
+var IE_PROTO = sharedKey('IE_PROTO');
+var $Object = Object;
+var ObjectPrototype = $Object.prototype;
+
+// `Object.getPrototypeOf` method
+// https://tc39.es/ecma262/#sec-object.getprototypeof
+// eslint-disable-next-line es/no-object-getprototypeof -- safe
+module.exports = CORRECT_PROTOTYPE_GETTER ? $Object.getPrototypeOf : function (O) {
+  var object = toObject(O);
+  if (hasOwn(object, IE_PROTO)) return object[IE_PROTO];
+  var constructor = object.constructor;
+  if (isCallable(constructor) && object instanceof constructor) {
+    return constructor.prototype;
+  } return object instanceof $Object ? ObjectPrototype : null;
 };
+
+});
+
+// MODULE: ./node_modules/core-js/internals/object-is-prototype-of.js
+var object_is_prototype_of_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+module.exports = uncurryThis({}.isPrototypeOf);
+
+});
 
 // MODULE: ./node_modules/core-js/internals/object-keys-internal.js
 var object_keys_internal_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -1376,10 +2187,398 @@ module.exports = getBuiltIn('Reflect', 'ownKeys') || function ownKeys(it) {
 
 });
 
+// MODULE: ./node_modules/core-js/internals/parse-json-string.js
+var parse_json_string_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+var hasOwn = (has_own_property_namespaceFn());
+
+var $SyntaxError = SyntaxError;
+var $parseInt = parseInt;
+var fromCharCode = String.fromCharCode;
+var at = uncurryThis(''.charAt);
+var slice = uncurryThis(''.slice);
+var exec = uncurryThis(/./.exec);
+
+var codePoints = {
+  '\\"': '"',
+  '\\\\': '\\',
+  '\\/': '/',
+  '\\b': '\b',
+  '\\f': '\f',
+  '\\n': '\n',
+  '\\r': '\r',
+  '\\t': '\t'
+};
+
+var IS_4_HEX_DIGITS = /^[\da-f]{4}$/i;
+// eslint-disable-next-line regexp/no-control-character -- safe
+var IS_C0_CONTROL_CODE = /^[\u0000-\u001F]$/;
+
+module.exports = function (source, i) {
+  var unterminated = true;
+  var value = '';
+  while (i < source.length) {
+    var chr = at(source, i);
+    if (chr === '\\') {
+      var twoChars = slice(source, i, i + 2);
+      if (hasOwn(codePoints, twoChars)) {
+        value += codePoints[twoChars];
+        i += 2;
+      } else if (twoChars === '\\u') {
+        i += 2;
+        var fourHexDigits = slice(source, i, i + 4);
+        if (!exec(IS_4_HEX_DIGITS, fourHexDigits)) throw new $SyntaxError('Bad Unicode escape at: ' + i);
+        value += fromCharCode($parseInt(fourHexDigits, 16));
+        i += 4;
+      } else throw new $SyntaxError('Unknown escape sequence: "' + twoChars + '"');
+    } else if (chr === '"') {
+      unterminated = false;
+      i++;
+      break;
+    } else {
+      if (exec(IS_C0_CONTROL_CODE, chr)) throw new $SyntaxError('Bad control character in string literal at: ' + i);
+      value += chr;
+      i++;
+    }
+  }
+  if (unterminated) throw new $SyntaxError('Unterminated string at: ' + i);
+  return { value: value, end: i };
+};
+
+});
+
 // EXTERNAL MODULE: ./node_modules/core-js/internals/require-object-coercible.js
 var require_object_coercible_namespaceFn = () => {
-	return __webpack_require__(4);
+	return __webpack_require__(2);
 };
+
+// MODULE: ./node_modules/core-js/internals/set-clone.js
+var set_clone_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var SetHelpers = (set_helpers_namespaceFn());
+var iterate = (set_iterate_namespaceFn());
+
+var Set = SetHelpers.Set;
+var add = SetHelpers.add;
+
+module.exports = function (set) {
+  var result = new Set();
+  iterate(set, function (it) {
+    add(result, it);
+  });
+  return result;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-difference.js
+var set_difference_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var SetHelpers = (set_helpers_namespaceFn());
+var clone = (set_clone_namespaceFn());
+var size = (set_size_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+var iterateSet = (set_iterate_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+
+var has = SetHelpers.has;
+var remove = SetHelpers.remove;
+
+// `Set.prototype.difference` method
+// https://tc39.es/ecma262/#sec-set.prototype.difference
+module.exports = function difference(other) {
+  var O = aSet(this);
+  var otherRec = getSetRecord(other);
+  var result = clone(O);
+  if (size(result) <= otherRec.size) iterateSet(result, function (e) {
+    if (otherRec.includes(e)) remove(result, e);
+  });
+  else iterateSimple(otherRec.getIterator(), function (e) {
+    if (has(result, e)) remove(result, e);
+  });
+  return result;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-helpers.js
+var set_helpers_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+// eslint-disable-next-line es/no-set -- safe
+var SetPrototype = Set.prototype;
+
+module.exports = {
+  // eslint-disable-next-line es/no-set -- safe
+  Set: Set,
+  add: uncurryThis(SetPrototype.add),
+  has: uncurryThis(SetPrototype.has),
+  remove: uncurryThis(SetPrototype['delete']),
+  proto: SetPrototype
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-intersection.js
+var set_intersection_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var SetHelpers = (set_helpers_namespaceFn());
+var size = (set_size_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+var iterateSet = (set_iterate_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+
+var Set = SetHelpers.Set;
+var add = SetHelpers.add;
+var has = SetHelpers.has;
+
+// `Set.prototype.intersection` method
+// https://tc39.es/ecma262/#sec-set.prototype.intersection
+module.exports = function intersection(other) {
+  var O = aSet(this);
+  var otherRec = getSetRecord(other);
+  var result = new Set();
+
+  if (size(O) > otherRec.size) {
+    iterateSimple(otherRec.getIterator(), function (e) {
+      if (has(O, e)) add(result, e);
+    });
+  } else {
+    iterateSet(O, function (e) {
+      if (otherRec.includes(e)) add(result, e);
+    });
+  }
+
+  return result;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-is-disjoint-from.js
+var set_is_disjoint_from_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var has = (set_helpers_namespaceFn().has);
+var size = (set_size_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+var iterateSet = (set_iterate_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+
+// `Set.prototype.isDisjointFrom` method
+// https://tc39.es/ecma262/#sec-set.prototype.isdisjointfrom
+module.exports = function isDisjointFrom(other) {
+  var O = aSet(this);
+  var otherRec = getSetRecord(other);
+  if (size(O) <= otherRec.size) return iterateSet(O, function (e) {
+    if (otherRec.includes(e)) return false;
+  }, true) !== false;
+  var iterator = otherRec.getIterator();
+  return iterateSimple(iterator, function (e) {
+    if (has(O, e)) return iteratorClose(iterator.iterator, 'normal', false);
+  }) !== false;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-is-subset-of.js
+var set_is_subset_of_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var size = (set_size_namespaceFn());
+var iterate = (set_iterate_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+
+// `Set.prototype.isSubsetOf` method
+// https://tc39.es/ecma262/#sec-set.prototype.issubsetof
+module.exports = function isSubsetOf(other) {
+  var O = aSet(this);
+  var otherRec = getSetRecord(other);
+  if (size(O) > otherRec.size) return false;
+  return iterate(O, function (e) {
+    if (!otherRec.includes(e)) return false;
+  }, true) !== false;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-is-superset-of.js
+var set_is_superset_of_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var has = (set_helpers_namespaceFn().has);
+var size = (set_size_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+
+// `Set.prototype.isSupersetOf` method
+// https://tc39.es/ecma262/#sec-set.prototype.issupersetof
+module.exports = function isSupersetOf(other) {
+  var O = aSet(this);
+  var otherRec = getSetRecord(other);
+  if (size(O) < otherRec.size) return false;
+  var iterator = otherRec.getIterator();
+  return iterateSimple(iterator, function (e) {
+    if (!has(O, e)) return iteratorClose(iterator.iterator, 'normal', false);
+  }) !== false;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-iterate.js
+var set_iterate_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+var SetHelpers = (set_helpers_namespaceFn());
+
+var Set = SetHelpers.Set;
+var SetPrototype = SetHelpers.proto;
+var forEach = uncurryThis(SetPrototype.forEach);
+var keys = uncurryThis(SetPrototype.keys);
+var next = keys(new Set()).next;
+
+module.exports = function (set, fn, interruptible) {
+  return interruptible ? iterateSimple({ iterator: keys(set), next: next }, fn) : forEach(set, fn);
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-method-accept-set-like.js
+var set_method_accept_set_like_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var getBuiltIn = (get_built_in_namespaceFn());
+
+var createSetLike = function (size) {
+  return {
+    size: size,
+    has: function () {
+      return false;
+    },
+    keys: function () {
+      return {
+        next: function () {
+          return { done: true };
+        }
+      };
+    }
+  };
+};
+
+var createSetLikeWithInfinitySize = function (size) {
+  return {
+    size: size,
+    has: function () {
+      return true;
+    },
+    keys: function () {
+      throw new Error('e');
+    }
+  };
+};
+
+module.exports = function (name, callback) {
+  var Set = getBuiltIn('Set');
+  try {
+    new Set()[name](createSetLike(0));
+    try {
+      // late spec change, early WebKit ~ Safari 17 implementation does not pass it
+      // https://github.com/tc39/proposal-set-methods/pull/88
+      // also covered engines with
+      // https://bugs.webkit.org/show_bug.cgi?id=272679
+      new Set()[name](createSetLike(-1));
+      return false;
+    } catch (error2) {
+      if (!callback) return true;
+      // early V8 implementation bug
+      // https://issues.chromium.org/issues/351332634
+      try {
+        new Set()[name](createSetLikeWithInfinitySize(-Infinity));
+        return false;
+      } catch (error) {
+        var set = new Set([1, 2]);
+        return callback(set[name](createSetLikeWithInfinitySize(Infinity)));
+      }
+    }
+  } catch (error) {
+    return false;
+  }
+};
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/set-method-get-keys-before-cloning-detection.js
+var set_method_get_keys_before_cloning_detection_namespaceFn = () => {
+	return __webpack_require__(7);
+};
+
+// MODULE: ./node_modules/core-js/internals/set-size.js
+var set_size_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThisAccessor = (function_uncurry_this_accessor_namespaceFn());
+var SetHelpers = (set_helpers_namespaceFn());
+
+module.exports = uncurryThisAccessor(SetHelpers.proto, 'size', 'get') || function (set) {
+  return set.size;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-symmetric-difference.js
+var set_symmetric_difference_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var SetHelpers = (set_helpers_namespaceFn());
+var clone = (set_clone_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+
+var add = SetHelpers.add;
+var has = SetHelpers.has;
+var remove = SetHelpers.remove;
+
+// `Set.prototype.symmetricDifference` method
+// https://tc39.es/ecma262/#sec-set.prototype.symmetricdifference
+module.exports = function symmetricDifference(other) {
+  var O = aSet(this);
+  var keysIter = getSetRecord(other).getIterator();
+  var result = clone(O);
+  iterateSimple(keysIter, function (e) {
+    if (has(O, e)) remove(result, e);
+    else add(result, e);
+  });
+  return result;
+};
+
+});
+
+// MODULE: ./node_modules/core-js/internals/set-union.js
+var set_union_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var aSet = (a_set_namespaceFn());
+var add = (set_helpers_namespaceFn().add);
+var clone = (set_clone_namespaceFn());
+var getSetRecord = (get_set_record_namespaceFn());
+var iterateSimple = (iterate_simple_namespaceFn());
+
+// `Set.prototype.union` method
+// https://tc39.es/ecma262/#sec-set.prototype.union
+module.exports = function union(other) {
+  var O = aSet(this);
+  var keysIter = getSetRecord(other).getIterator();
+  var result = clone(O);
+  iterateSimple(keysIter, function (it) {
+    add(result, it);
+  });
+  return result;
+};
+
+});
 
 // MODULE: ./node_modules/core-js/internals/shared-key.js
 var shared_key_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -1452,6 +2651,17 @@ module.exports = !!Object.getOwnPropertySymbols && !fails(function () {
 
 });
 
+// MODULE: ./node_modules/core-js/internals/this-number-value.js
+var this_number_value_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+// `thisNumberValue` abstract operation
+// https://tc39.es/ecma262/#sec-thisnumbervalue
+module.exports = uncurryThis(1.1.valueOf);
+
+});
+
 // MODULE: ./node_modules/core-js/internals/to-absolute-index.js
 var to_absolute_index_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
 
@@ -1485,17 +2695,17 @@ module.exports = function (it) {
 
 // EXTERNAL MODULE: ./node_modules/core-js/internals/to-integer-or-infinity.js
 var to_integer_or_infinity_namespaceFn = () => {
-	return __webpack_require__(6);
+	return __webpack_require__(1);
 };
 
 // EXTERNAL MODULE: ./node_modules/core-js/internals/to-length.js
 var to_length_namespaceFn = () => {
-	return __webpack_require__(17);
+	return __webpack_require__(9);
 };
 
 // EXTERNAL MODULE: ./node_modules/core-js/internals/to-object.js
 var to_object_namespaceFn = () => {
-	return __webpack_require__(15);
+	return __webpack_require__(5);
 };
 
 // MODULE: ./node_modules/core-js/internals/to-primitive.js
@@ -1544,10 +2754,53 @@ module.exports = function (argument) {
 
 });
 
-// EXTERNAL MODULE: ./node_modules/core-js/internals/uid.js
-var uid_namespaceFn = () => {
-	return __webpack_require__(7);
+// MODULE: ./node_modules/core-js/internals/to-string-tag-support.js
+var to_string_tag_support_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+
+var TO_STRING_TAG = wellKnownSymbol('toStringTag');
+var test = {};
+// eslint-disable-next-line unicorn/no-immediate-mutation -- ES3 syntax limitation
+test[TO_STRING_TAG] = 'z';
+
+module.exports = String(test) === '[object z]';
+
+});
+
+// MODULE: ./node_modules/core-js/internals/to-string.js
+var to_string_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var classof = (classof_namespaceFn());
+
+var $String = String;
+
+module.exports = function (argument) {
+  if (classof(argument) === 'Symbol') throw new TypeError('Cannot convert a Symbol value to a string');
+  return $String(argument);
 };
+
+});
+
+// EXTERNAL MODULE: ./node_modules/core-js/internals/try-to-string.js
+var try_to_string_namespaceFn = () => {
+	return __webpack_require__(4);
+};
+
+// MODULE: ./node_modules/core-js/internals/uid.js
+var uid_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
+
+var uncurryThis = (function_uncurry_this_namespaceFn());
+
+var id = 0;
+var postfix = Math.random();
+var toString = uncurryThis(1.1.toString);
+
+module.exports = function (key) {
+  return 'Symbol(' + (key === undefined ? '' : key) + ')_' + toString(++id + postfix, 36);
+};
+
+});
 
 // MODULE: ./node_modules/core-js/internals/use-symbol-as-uid.js
 var use_symbol_as_uid_namespaceFn = /*#__PURE__*/__webpack_require__.cw((module) => {
@@ -1648,18 +2901,1118 @@ addToUnscopables('includes');
 
 });
 
+// MODULE: ./node_modules/core-js/modules/es.array.push.js
+var es_array_push_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var toObject = (to_object_namespaceFn());
+var lengthOfArrayLike = (length_of_array_like_namespaceFn());
+var setArrayLength = (array_set_length_namespaceFn());
+var doesNotExceedSafeInteger = (does_not_exceed_safe_integer_namespaceFn());
+var fails = (fails_namespaceFn());
+
+var INCORRECT_TO_LENGTH = fails(function () {
+  return [].push.call({ length: 0x100000000 }, 1) !== 4294967297;
+});
+
+// V8 <= 121 and Safari <= 15.4; FF < 23 throws InternalError
+// https://bugs.chromium.org/p/v8/issues/detail?id=12681
+var properErrorOnNonWritableLength = function () {
+  try {
+    // eslint-disable-next-line es/no-object-defineproperty -- safe
+    Object.defineProperty([], 'length', { writable: false }).push();
+  } catch (error) {
+    return error instanceof TypeError;
+  }
+};
+
+var FORCED = INCORRECT_TO_LENGTH || !properErrorOnNonWritableLength();
+
+// `Array.prototype.push` method
+// https://tc39.es/ecma262/#sec-array.prototype.push
+$({ target: 'Array', proto: true, arity: 1, forced: FORCED }, {
+  // eslint-disable-next-line no-unused-vars -- required for `.length`
+  push: function push(item) {
+    var O = toObject(this);
+    var len = lengthOfArrayLike(O);
+    var argCount = arguments.length;
+    doesNotExceedSafeInteger(len + argCount);
+    for (var i = 0; i < argCount; i++) {
+      O[len] = arguments[i];
+      len++;
+    }
+    setArrayLength(O, len);
+    return len;
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.iterator.constructor.js
+var es_iterator_constructor_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var globalThis = (global_this_namespaceFn());
+var anInstance = (an_instance_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var getPrototypeOf = (object_get_prototype_of_namespaceFn());
+var defineBuiltInAccessor = (define_built_in_accessor_namespaceFn());
+var createProperty = (create_property_namespaceFn());
+var fails = (fails_namespaceFn());
+var hasOwn = (has_own_property_namespaceFn());
+var wellKnownSymbol = (well_known_symbol_namespaceFn());
+var IteratorPrototype = (iterators_core_namespaceFn().H);
+var DESCRIPTORS = (descriptors_namespaceFn());
+var IS_PURE = (is_pure_namespaceFn());
+
+var CONSTRUCTOR = 'constructor';
+var ITERATOR = 'Iterator';
+var TO_STRING_TAG = wellKnownSymbol('toStringTag');
+
+var $TypeError = TypeError;
+var NativeIterator = globalThis[ITERATOR];
+
+// FF56- have non-standard global helper `Iterator`
+var FORCED = IS_PURE
+  || !isCallable(NativeIterator)
+  || NativeIterator.prototype !== IteratorPrototype
+  // FF44- non-standard `Iterator` passes previous tests
+  || !fails(function () { NativeIterator({}); });
+
+var IteratorConstructor = function Iterator() {
+  anInstance(this, IteratorPrototype);
+  if (getPrototypeOf(this) === IteratorPrototype) throw new $TypeError('Abstract class Iterator not directly constructable');
+};
+
+var defineIteratorPrototypeAccessor = function (key, value) {
+  if (DESCRIPTORS) {
+    defineBuiltInAccessor(IteratorPrototype, key, {
+      configurable: true,
+      get: function () {
+        return value;
+      },
+      set: function (replacement) {
+        anObject(this);
+        if (this === IteratorPrototype) throw new $TypeError("You can't redefine this property");
+        if (hasOwn(this, key)) this[key] = replacement;
+        else createProperty(this, key, replacement);
+      }
+    });
+  } else IteratorPrototype[key] = value;
+};
+
+if (!hasOwn(IteratorPrototype, TO_STRING_TAG)) defineIteratorPrototypeAccessor(TO_STRING_TAG, ITERATOR);
+
+if (FORCED || !hasOwn(IteratorPrototype, CONSTRUCTOR) || IteratorPrototype[CONSTRUCTOR] === Object) {
+  defineIteratorPrototypeAccessor(CONSTRUCTOR, IteratorConstructor);
+}
+
+IteratorConstructor.prototype = IteratorPrototype;
+
+// `Iterator` constructor
+// https://tc39.es/ecma262/#sec-iterator
+$({ global: true, constructor: true, forced: FORCED }, {
+  Iterator: IteratorConstructor
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.iterator.every.js
+var es_iterator_every_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var call = (function_call_namespaceFn());
+var iterate = (iterate_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var getIteratorDirect = (get_iterator_direct_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+var iteratorHelperWithoutClosingOnEarlyError = (iterator_helper_without_closing_on_early_error_namespaceFn());
+
+var everyWithoutClosingOnEarlyError = iteratorHelperWithoutClosingOnEarlyError('every', TypeError);
+
+// `Iterator.prototype.every` method
+// https://tc39.es/ecma262/#sec-iterator.prototype.every
+$({ target: 'Iterator', proto: true, real: true, forced: everyWithoutClosingOnEarlyError }, {
+  every: function every(predicate) {
+    anObject(this);
+    try {
+      aCallable(predicate);
+    } catch (error) {
+      iteratorClose(this, 'throw', error);
+    }
+
+    if (everyWithoutClosingOnEarlyError) return call(everyWithoutClosingOnEarlyError, this, predicate);
+
+    var record = getIteratorDirect(this);
+    var counter = 0;
+    return !iterate(record, function (value, stop) {
+      if (!predicate(value, counter++)) return stop();
+    }, { IS_RECORD: true, INTERRUPTED: true }).stopped;
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.iterator.filter.js
+var es_iterator_filter_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var call = (function_call_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var getIteratorDirect = (get_iterator_direct_namespaceFn());
+var createIteratorProxy = (iterator_create_proxy_namespaceFn());
+var callWithSafeIterationClosing = (call_with_safe_iteration_closing_namespaceFn());
+var IS_PURE = (is_pure_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+var iteratorHelperThrowsOnInvalidIterator = (iterator_helper_throws_on_invalid_iterator_namespaceFn());
+var iteratorHelperWithoutClosingOnEarlyError = (iterator_helper_without_closing_on_early_error_namespaceFn());
+
+var FILTER_WITHOUT_THROWING_ON_INVALID_ITERATOR = !IS_PURE && !iteratorHelperThrowsOnInvalidIterator('filter', function () { /* empty */ });
+var filterWithoutClosingOnEarlyError = !IS_PURE && !FILTER_WITHOUT_THROWING_ON_INVALID_ITERATOR
+  && iteratorHelperWithoutClosingOnEarlyError('filter', TypeError);
+
+var FORCED = IS_PURE || FILTER_WITHOUT_THROWING_ON_INVALID_ITERATOR || filterWithoutClosingOnEarlyError;
+
+var IteratorProxy = createIteratorProxy(function () {
+  var iterator = this.iterator;
+  var predicate = this.predicate;
+  var next = this.next;
+  var result, done, value;
+  while (true) {
+    result = anObject(call(next, iterator));
+    done = this.done = !!result.done;
+    if (done) return;
+    value = result.value;
+    if (callWithSafeIterationClosing(iterator, predicate, [value, this.counter++], true)) return value;
+  }
+});
+
+// `Iterator.prototype.filter` method
+// https://tc39.es/ecma262/#sec-iterator.prototype.filter
+$({ target: 'Iterator', proto: true, real: true, forced: FORCED }, {
+  filter: function filter(predicate) {
+    anObject(this);
+    try {
+      aCallable(predicate);
+    } catch (error) {
+      iteratorClose(this, 'throw', error);
+    }
+
+    if (filterWithoutClosingOnEarlyError) return call(filterWithoutClosingOnEarlyError, this, predicate);
+
+    return new IteratorProxy(getIteratorDirect(this), {
+      predicate: predicate
+    });
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.iterator.for-each.js
+var es_iterator_for_each_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var call = (function_call_namespaceFn());
+var iterate = (iterate_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var getIteratorDirect = (get_iterator_direct_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+var iteratorHelperWithoutClosingOnEarlyError = (iterator_helper_without_closing_on_early_error_namespaceFn());
+
+var forEachWithoutClosingOnEarlyError = iteratorHelperWithoutClosingOnEarlyError('forEach', TypeError);
+
+// `Iterator.prototype.forEach` method
+// https://tc39.es/ecma262/#sec-iterator.prototype.foreach
+$({ target: 'Iterator', proto: true, real: true, forced: forEachWithoutClosingOnEarlyError }, {
+  forEach: function forEach(fn) {
+    anObject(this);
+    try {
+      aCallable(fn);
+    } catch (error) {
+      iteratorClose(this, 'throw', error);
+    }
+
+    if (forEachWithoutClosingOnEarlyError) return call(forEachWithoutClosingOnEarlyError, this, fn);
+
+    var record = getIteratorDirect(this);
+    var counter = 0;
+    iterate(record, function (value) {
+      fn(value, counter++);
+    }, { IS_RECORD: true });
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.iterator.map.js
+var es_iterator_map_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var call = (function_call_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var getIteratorDirect = (get_iterator_direct_namespaceFn());
+var createIteratorProxy = (iterator_create_proxy_namespaceFn());
+var callWithSafeIterationClosing = (call_with_safe_iteration_closing_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+var iteratorHelperThrowsOnInvalidIterator = (iterator_helper_throws_on_invalid_iterator_namespaceFn());
+var iteratorHelperWithoutClosingOnEarlyError = (iterator_helper_without_closing_on_early_error_namespaceFn());
+var IS_PURE = (is_pure_namespaceFn());
+
+var MAP_WITHOUT_THROWING_ON_INVALID_ITERATOR = !IS_PURE && !iteratorHelperThrowsOnInvalidIterator('map', function () { /* empty */ });
+var mapWithoutClosingOnEarlyError = !IS_PURE && !MAP_WITHOUT_THROWING_ON_INVALID_ITERATOR
+  && iteratorHelperWithoutClosingOnEarlyError('map', TypeError);
+
+var FORCED = IS_PURE || MAP_WITHOUT_THROWING_ON_INVALID_ITERATOR || mapWithoutClosingOnEarlyError;
+
+var IteratorProxy = createIteratorProxy(function () {
+  var iterator = this.iterator;
+  var result = anObject(call(this.next, iterator));
+  var done = this.done = !!result.done;
+  if (!done) return callWithSafeIterationClosing(iterator, this.mapper, [result.value, this.counter++], true);
+});
+
+// `Iterator.prototype.map` method
+// https://tc39.es/ecma262/#sec-iterator.prototype.map
+$({ target: 'Iterator', proto: true, real: true, forced: FORCED }, {
+  map: function map(mapper) {
+    anObject(this);
+    try {
+      aCallable(mapper);
+    } catch (error) {
+      iteratorClose(this, 'throw', error);
+    }
+
+    if (mapWithoutClosingOnEarlyError) return call(mapWithoutClosingOnEarlyError, this, mapper);
+
+    return new IteratorProxy(getIteratorDirect(this), {
+      mapper: mapper
+    });
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.iterator.some.js
+var es_iterator_some_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var call = (function_call_namespaceFn());
+var iterate = (iterate_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var anObject = (an_object_namespaceFn());
+var getIteratorDirect = (get_iterator_direct_namespaceFn());
+var iteratorClose = (iterator_close_namespaceFn());
+var iteratorHelperWithoutClosingOnEarlyError = (iterator_helper_without_closing_on_early_error_namespaceFn());
+
+var someWithoutClosingOnEarlyError = iteratorHelperWithoutClosingOnEarlyError('some', TypeError);
+
+// `Iterator.prototype.some` method
+// https://tc39.es/ecma262/#sec-iterator.prototype.some
+$({ target: 'Iterator', proto: true, real: true, forced: someWithoutClosingOnEarlyError }, {
+  some: function some(predicate) {
+    anObject(this);
+    try {
+      aCallable(predicate);
+    } catch (error) {
+      iteratorClose(this, 'throw', error);
+    }
+
+    if (someWithoutClosingOnEarlyError) return call(someWithoutClosingOnEarlyError, this, predicate);
+
+    var record = getIteratorDirect(this);
+    var counter = 0;
+    return iterate(record, function (value, stop) {
+      if (predicate(value, counter++)) return stop();
+    }, { IS_RECORD: true, INTERRUPTED: true }).stopped;
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.json.parse.js
+var es_json_parse_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var DESCRIPTORS = (descriptors_namespaceFn());
+var globalThis = (global_this_namespaceFn());
+var getBuiltIn = (get_built_in_namespaceFn());
+var uncurryThis = (function_uncurry_this_namespaceFn());
+var call = (function_call_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var isObject = (is_object_namespaceFn());
+var isArray = (is_array_namespaceFn());
+var hasOwn = (has_own_property_namespaceFn());
+var toString = (to_string_namespaceFn());
+var lengthOfArrayLike = (length_of_array_like_namespaceFn());
+var createProperty = (create_property_namespaceFn());
+var fails = (fails_namespaceFn());
+var parseJSONString = (parse_json_string_namespaceFn());
+var NATIVE_SYMBOL = (symbol_constructor_detection_namespaceFn());
+
+var JSON = globalThis.JSON;
+var Number = globalThis.Number;
+var SyntaxError = globalThis.SyntaxError;
+var nativeParse = JSON && JSON.parse;
+var enumerableOwnProperties = getBuiltIn('Object', 'keys');
+// eslint-disable-next-line es/no-object-getownpropertydescriptor -- safe
+var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+var at = uncurryThis(''.charAt);
+var slice = uncurryThis(''.slice);
+var exec = uncurryThis(/./.exec);
+var push = uncurryThis([].push);
+
+var IS_DIGIT = /^\d$/;
+var IS_NON_ZERO_DIGIT = /^[1-9]$/;
+var IS_NUMBER_START = /^[\d-]$/;
+var IS_WHITESPACE = /^[\t\n\r ]$/;
+
+var PRIMITIVE = 0;
+var OBJECT = 1;
+
+var $parse = function (source, reviver) {
+  source = toString(source);
+  var context = new Context(source, 0);
+  var root = context.parse();
+  var value = root.value;
+  var endIndex = context.skip(IS_WHITESPACE, root.end);
+  if (endIndex < source.length) {
+    throw new SyntaxError('Unexpected extra character: "' + at(source, endIndex) + '" after the parsed data at: ' + endIndex);
+  }
+  return isCallable(reviver) ? internalize({ '': value }, '', reviver, root) : value;
+};
+
+var internalize = function (holder, name, reviver, node) {
+  var val = holder[name];
+  var unmodified = node && val === node.value;
+  var context = unmodified && typeof node.source == 'string' ? { source: node.source } : {};
+  var elementRecordsLen, keys, len, i, P;
+  if (isObject(val)) {
+    var nodeIsArray = isArray(val);
+    var nodes = unmodified ? node.nodes : nodeIsArray ? [] : {};
+    if (nodeIsArray) {
+      elementRecordsLen = nodes.length;
+      len = lengthOfArrayLike(val);
+      for (i = 0; i < len; i++) {
+        internalizeProperty(val, i, internalize(val, '' + i, reviver, i < elementRecordsLen ? nodes[i] : undefined));
+      }
+    } else {
+      keys = enumerableOwnProperties(val);
+      len = lengthOfArrayLike(keys);
+      for (i = 0; i < len; i++) {
+        P = keys[i];
+        internalizeProperty(val, P, internalize(val, P, reviver, hasOwn(nodes, P) ? nodes[P] : undefined));
+      }
+    }
+  }
+  return call(reviver, holder, name, val, context);
+};
+
+var internalizeProperty = function (object, key, value) {
+  if (DESCRIPTORS) {
+    var descriptor = getOwnPropertyDescriptor(object, key);
+    if (descriptor && !descriptor.configurable) return;
+  }
+  if (value === undefined) delete object[key];
+  else createProperty(object, key, value);
+};
+
+var Node = function (value, end, source, nodes) {
+  this.value = value;
+  this.end = end;
+  this.source = source;
+  this.nodes = nodes;
+};
+
+var Context = function (source, index) {
+  this.source = source;
+  this.index = index;
+};
+
+// https://www.json.org/json-en.html
+Context.prototype = {
+  fork: function (nextIndex) {
+    return new Context(this.source, nextIndex);
+  },
+  parse: function () {
+    var source = this.source;
+    var i = this.skip(IS_WHITESPACE, this.index);
+    var fork = this.fork(i);
+    var chr = at(source, i);
+    if (exec(IS_NUMBER_START, chr)) return fork.number();
+    switch (chr) {
+      case '{':
+        return fork.object();
+      case '[':
+        return fork.array();
+      case '"':
+        return fork.string();
+      case 't':
+        return fork.keyword(true);
+      case 'f':
+        return fork.keyword(false);
+      case 'n':
+        return fork.keyword(null);
+    } throw new SyntaxError('Unexpected character: "' + chr + '" at: ' + i);
+  },
+  node: function (type, value, start, end, nodes) {
+    return new Node(value, end, type ? null : slice(this.source, start, end), nodes);
+  },
+  object: function () {
+    var source = this.source;
+    var i = this.index + 1;
+    var expectKeypair = false;
+    var object = {};
+    var nodes = {};
+    var closed = false;
+    while (i < source.length) {
+      i = this.until(['"', '}'], i);
+      if (at(source, i) === '}' && !expectKeypair) {
+        i++;
+        closed = true;
+        break;
+      }
+      // Parsing the key
+      var result = this.fork(i).string();
+      var key = result.value;
+      i = result.end;
+      i = this.until([':'], i) + 1;
+      // Parsing value
+      i = this.skip(IS_WHITESPACE, i);
+      result = this.fork(i).parse();
+      createProperty(nodes, key, result);
+      createProperty(object, key, result.value);
+      i = this.until([',', '}'], result.end);
+      var chr = at(source, i);
+      if (chr === ',') {
+        expectKeypair = true;
+        i++;
+      } else if (chr === '}') {
+        i++;
+        closed = true;
+        break;
+      }
+    }
+    if (!closed) throw new SyntaxError('Unterminated object at: ' + i);
+    return this.node(OBJECT, object, this.index, i, nodes);
+  },
+  array: function () {
+    var source = this.source;
+    var i = this.index + 1;
+    var expectElement = false;
+    var array = [];
+    var nodes = [];
+    var closed = false;
+    while (i < source.length) {
+      i = this.skip(IS_WHITESPACE, i);
+      if (at(source, i) === ']' && !expectElement) {
+        i++;
+        closed = true;
+        break;
+      }
+      var result = this.fork(i).parse();
+      push(nodes, result);
+      push(array, result.value);
+      i = this.until([',', ']'], result.end);
+      if (at(source, i) === ',') {
+        expectElement = true;
+        i++;
+      } else if (at(source, i) === ']') {
+        i++;
+        closed = true;
+        break;
+      }
+    }
+    if (!closed) throw new SyntaxError('Unterminated array at: ' + i);
+    return this.node(OBJECT, array, this.index, i, nodes);
+  },
+  string: function () {
+    var index = this.index;
+    var parsed = parseJSONString(this.source, this.index + 1);
+    return this.node(PRIMITIVE, parsed.value, index, parsed.end);
+  },
+  number: function () {
+    var source = this.source;
+    var startIndex = this.index;
+    var i = startIndex;
+    if (at(source, i) === '-') i++;
+    if (at(source, i) === '0') i++;
+    else if (exec(IS_NON_ZERO_DIGIT, at(source, i))) i = this.skip(IS_DIGIT, i + 1);
+    else throw new SyntaxError('Failed to parse number at: ' + i);
+    if (at(source, i) === '.') {
+      var fractionStartIndex = i + 1;
+      i = this.skip(IS_DIGIT, fractionStartIndex);
+      if (fractionStartIndex === i) throw new SyntaxError("Failed to parse number's fraction at: " + i);
+    }
+    if (at(source, i) === 'e' || at(source, i) === 'E') {
+      i++;
+      if (at(source, i) === '+' || at(source, i) === '-') i++;
+      var exponentStartIndex = i;
+      i = this.skip(IS_DIGIT, i);
+      if (exponentStartIndex === i) throw new SyntaxError("Failed to parse number's exponent value at: " + i);
+    }
+    return this.node(PRIMITIVE, Number(slice(source, startIndex, i)), startIndex, i);
+  },
+  keyword: function (value) {
+    var keyword = '' + value;
+    var index = this.index;
+    var endIndex = index + keyword.length;
+    if (slice(this.source, index, endIndex) !== keyword) throw new SyntaxError('Failed to parse value at: ' + index);
+    return this.node(PRIMITIVE, value, index, endIndex);
+  },
+  skip: function (regex, i) {
+    var source = this.source;
+    for (; i < source.length; i++) if (!exec(regex, at(source, i))) break;
+    return i;
+  },
+  until: function (array, i) {
+    i = this.skip(IS_WHITESPACE, i);
+    var chr = at(this.source, i);
+    for (var j = 0; j < array.length; j++) if (array[j] === chr) return i;
+    throw new SyntaxError('Unexpected character: "' + chr + '" at: ' + i);
+  }
+};
+
+var NO_SOURCE_SUPPORT = fails(function () {
+  var unsafeInt = '9007199254740993';
+  var source;
+  nativeParse(unsafeInt, function (key, value, context) {
+    source = context.source;
+  });
+  return source !== unsafeInt;
+});
+
+var PROPER_BASE_PARSE = NATIVE_SYMBOL && !fails(function () {
+  // Safari 9 bug
+  return 1 / nativeParse('-0 \t') !== -Infinity;
+});
+
+// `JSON.parse` method
+// https://tc39.es/ecma262/#sec-json.parse
+// https://github.com/tc39/proposal-json-parse-with-source
+$({ target: 'JSON', stat: true, forced: NO_SOURCE_SUPPORT }, {
+  parse: function parse(text, reviver) {
+    return PROPER_BASE_PARSE && !isCallable(reviver) ? nativeParse(text) : $parse(text, reviver);
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.json.stringify.js
+var es_json_stringify_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var getBuiltIn = (get_built_in_namespaceFn());
+var call = (function_call_namespaceFn());
+var uncurryThis = (function_uncurry_this_namespaceFn());
+var fails = (fails_namespaceFn());
+var isArray = (is_array_namespaceFn());
+var isCallable = (is_callable_namespaceFn());
+var isObject = (is_object_namespaceFn());
+var create = (object_create_namespaceFn());
+var isRawJSON = (is_raw_json_namespaceFn());
+var isSymbol = (is_symbol_namespaceFn());
+var classof = (classof_raw_namespaceFn());
+var thisNumberValue = (this_number_value_namespaceFn());
+var includes = (array_includes_namespaceFn().m);
+var hasOwn = (has_own_property_namespaceFn());
+var toString = (to_string_namespaceFn());
+var parseJSONString = (parse_json_string_namespaceFn());
+var uid = (uid_namespaceFn());
+var NATIVE_SYMBOL = (symbol_constructor_detection_namespaceFn());
+var NATIVE_RAW_JSON = (native_raw_json_namespaceFn());
+
+var $String = String;
+var $TypeError = TypeError;
+var $stringify = getBuiltIn('JSON', 'stringify');
+var $BigInt = getBuiltIn('BigInt');
+var stringValueOf = uncurryThis(''.valueOf);
+var booleanValueOf = uncurryThis(true.valueOf);
+var bigIntValueOf = $BigInt && uncurryThis($BigInt.prototype.valueOf);
+var exec = uncurryThis(/./.exec);
+var charAt = uncurryThis(''.charAt);
+var charCodeAt = uncurryThis(''.charCodeAt);
+var replace = uncurryThis(''.replace);
+var slice = uncurryThis(''.slice);
+var push = uncurryThis([].push);
+var pop = uncurryThis([].pop);
+var numberToString = uncurryThis(1.1.toString);
+
+var surrogates = /[\uD800-\uDFFF]/g;
+var leadingSurrogates = /^[\uD800-\uDBFF]$/;
+var trailingSurrogates = /^[\uDC00-\uDFFF]$/;
+var digits = /^\d+$/;
+
+// a placeholder of a raw JSON value
+var RAW_MARK = uid();
+// a prefix of keys of a reordered object, see `createOrderedObject`
+var KEY_MARK = uid();
+// the last key of a reordered object, marks the end of its serialization
+var END_MARK = uid();
+var RAW_MARK_LENGTH = RAW_MARK.length;
+var KEY_MARK_LENGTH = KEY_MARK.length;
+
+var WRONG_SYMBOLS_CONVERSION = !NATIVE_SYMBOL || fails(function () {
+  var symbol = getBuiltIn('Symbol')('stringify detection');
+  // MS Edge converts symbol values to JSON as {}
+  return $stringify([symbol]) !== '[null]'
+    // WebKit converts symbol values to JSON as null
+    || $stringify({ a: symbol }) !== '{}'
+    // V8 throws on boxed symbols
+    || $stringify(Object(symbol)) !== '{}';
+});
+
+// https://github.com/tc39/proposal-well-formed-stringify
+var ILL_FORMED_UNICODE = fails(function () {
+  return $stringify('\uDF06\uD834') !== '"\\udf06\\ud834"'
+    || $stringify('\uDEAD') !== '"\\udead"';
+});
+
+var isRawJSONValue = NATIVE_RAW_JSON ? getBuiltIn('JSON', 'isRawJSON') : isRawJSON;
+
+var stringifyWithProperSymbolsConversion = WRONG_SYMBOLS_CONVERSION ? function (it, replacer, space) {
+  return $stringify(it, function (key, value) {
+    var replaced = call(replacer, this, key, value);
+    if (!isSymbol(replaced)) return replaced;
+  }, space);
+} : $stringify;
+
+var fixIllFormedJSON = function (match, offset, string) {
+  var prev = charAt(string, offset - 1);
+  var next = charAt(string, offset + 1);
+  if (
+    (exec(leadingSurrogates, match) && !exec(trailingSurrogates, next)) ||
+    (exec(trailingSurrogates, match) && !exec(leadingSurrogates, prev))
+  ) {
+    return '\\u' + numberToString(charCodeAt(match, 0), 16);
+  } return match;
+};
+
+// `PropertyList` of `JSON.stringify`
+// https://tc39.es/ecma262/#sec-json.stringify
+var getPropertyList = function (replacer) {
+  if (!isArray(replacer)) return;
+  var rawLength = replacer.length;
+  var propertyList = [];
+  // a null prototype object is used as a set of already added keys to keep the deduplication linear
+  var addedKeys = create(null);
+  for (var i = 0; i < rawLength; i++) {
+    var element = replacer[i];
+    var key;
+    if (typeof element == 'string') key = element;
+    else if (typeof element == 'number' || classof(element) === 'Number' || classof(element) === 'String') key = toString(element);
+    else continue;
+    if (!hasOwn(addedKeys, key)) {
+      addedKeys[key] = true;
+      push(propertyList, key);
+    }
+  }
+  return propertyList;
+};
+
+// values with such an internal slot are unwrapped by `SerializeJSONProperty` instead of being serialized as objects
+var hasInternalSlot = function (valueOf, it) {
+  try {
+    valueOf(it);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+// the slot check is expensive, so it's performed only for the kind reported by the value itself -
+// a value lying about its kind via `Symbol.toStringTag` is serialized as an ordinary object
+var isBoxedPrimitive = function (it) {
+  var kind = classof(it);
+  return (kind === 'Number' && hasInternalSlot(thisNumberValue, it))
+    || (kind === 'String' && hasInternalSlot(stringValueOf, it))
+    || (kind === 'Boolean' && hasInternalSlot(booleanValueOf, it))
+    || (!!bigIntValueOf && kind === 'BigInt' && hasInternalSlot(bigIntValueOf, it));
+};
+
+// only objects serialized by `SerializeJSONObject` are affected by the property list
+var isSerializedAsObject = function (it) {
+  if (!isObject(it) || isCallable(it) || isArray(it)) return false;
+  try {
+    return !isBoxedPrimitive(it);
+  // `classof` reads `Symbol.toStringTag`, so a proxy could throw - it has no internal slots anyway
+  } catch (error) {
+    return true;
+  }
+};
+
+// the engine unwraps it in the same order as it would read the original property,
+// so the property is read lazily and `toJSON` is called once and with the original key
+var createElementHolder = function (holder, key) {
+  return {
+    toJSON: function () {
+      var element = holder[key];
+      if (isObject(element) || typeof element == 'bigint') {
+        var elementToJSON = element.toJSON;
+        if (isCallable(elementToJSON)) element = call(elementToJSON, element, key);
+      } return element;
+    }
+  };
+};
+
+// own keys of objects are sorted - integer-like keys are moved to the beginning,
+// so such keys should be marked and restored in the serialized string
+var getKeyPrefix = function (propertyList) {
+  for (var i = 0, length = propertyList.length; i < length; i++) {
+    if (exec(digits, propertyList[i])) return KEY_MARK;
+  } return '';
+};
+
+// `SerializeJSONObject` iterates the property list, so the value is replaced with an object with keys in this order
+var createOrderedObject = function (value, propertyList, keyPrefix) {
+  // keys are not marked if the property list has no integer-like keys, so `Object.prototype`
+  // with a setter, a non-writable property or `__proto__` should not intercept the assignment
+  var ordered = create(null);
+  for (var i = 0, length = propertyList.length; i < length; i++) {
+    var key = propertyList[i];
+    ordered[keyPrefix + key] = createElementHolder(value, key);
+  }
+  ordered[END_MARK] = null;
+  return ordered;
+};
+
+// `JSON.stringify` method
+// https://tc39.es/ecma262/#sec-json.stringify
+// https://github.com/tc39/proposal-json-parse-with-source
+if ($stringify) $({ target: 'JSON', stat: true, arity: 3, forced: WRONG_SYMBOLS_CONVERSION || ILL_FORMED_UNICODE || !NATIVE_RAW_JSON }, {
+  stringify: function stringify(text, replacer, space) {
+    var replacerFunction = isCallable(replacer) ? replacer : undefined;
+    var propertyList = replacerFunction ? undefined : getPropertyList(replacer);
+    var keyPrefix = propertyList && getKeyPrefix(propertyList);
+    var rawStrings = [];
+    var openObjects = [];
+    var parentOrdered = [];
+    var currentOrdered;
+    var marked = false;
+    var root = true;
+
+    var json = stringifyWithProperSymbolsConversion(text, function (key, value) {
+      // some old implementations (like WebKit) could pass numbers as keys
+      key = $String(key);
+
+      if (propertyList) {
+        if (key === END_MARK) {
+          pop(openObjects);
+          currentOrdered = pop(parentOrdered);
+          return;
+        }
+        if (root) root = false;
+        // the innermost reordered object already contains only keys of the property list and arrays are not
+        // affected by it, the rest of objects (like objects with a fake `Symbol.toStringTag`) are filtered here
+        else if (this !== currentOrdered && !isArray(this) && !includes(propertyList, key)) return;
+      } else if (replacerFunction) value = call(replacerFunction, this, key, value);
+
+      if (isRawJSONValue(value)) {
+        if (NATIVE_RAW_JSON) return value;
+        marked = true;
+        return RAW_MARK + (push(rawStrings, value.rawJSON) - 1);
+      }
+
+      if (propertyList && isSerializedAsObject(value)) {
+        // reordered objects are new each time, so cycles should be detected before the engine does it
+        if (includes(openObjects, value)) throw new $TypeError('Converting circular structure to JSON');
+        var ordered = createOrderedObject(value, propertyList, keyPrefix);
+        push(openObjects, value);
+        push(parentOrdered, currentOrdered);
+        currentOrdered = ordered;
+        if (keyPrefix) marked = true;
+        return ordered;
+      }
+
+      return value;
+    }, space);
+
+    if (typeof json != 'string') return json;
+
+    if (ILL_FORMED_UNICODE) json = replace(json, surrogates, fixIllFormedJSON);
+
+    if (!marked) return json;
+
+    var result = '';
+    var length = json.length;
+
+    for (var i = 0; i < length; i++) {
+      var chr = charAt(json, i);
+      if (chr === '"') {
+        var end = parseJSONString(json, ++i).end - 1;
+        var string = slice(json, i, end);
+        if (slice(string, 0, RAW_MARK_LENGTH) === RAW_MARK) result += rawStrings[slice(string, RAW_MARK_LENGTH)];
+        else if (slice(string, 0, KEY_MARK_LENGTH) === KEY_MARK) result += '"' + slice(string, KEY_MARK_LENGTH) + '"';
+        else result += '"' + string + '"';
+        i = end;
+      } else result += chr;
+    }
+
+    return result;
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.map.get-or-insert-computed.js
+var es_map_get_or_insert_computed_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var aCallable = (a_callable_namespaceFn());
+var MapHelpers = (map_helpers_namespaceFn());
+var IS_PURE = (is_pure_namespaceFn());
+
+var get = MapHelpers.get;
+var has = MapHelpers.has;
+var set = MapHelpers.set;
+
+// `Map.prototype.getOrInsertComputed` method
+// https://tc39.es/ecma262/#sec-map.prototype.getorinsertcomputed
+$({ target: 'Map', proto: true, real: true, forced: IS_PURE }, {
+  getOrInsertComputed: function getOrInsertComputed(key, callbackfn) {
+    var hasKey = has(this, key);
+    aCallable(callbackfn);
+    if (hasKey) return get(this, key);
+    // CanonicalizeKeyedCollectionKey
+    if (key === 0 && 1 / key === -Infinity) key = 0;
+    var value = callbackfn(key);
+    set(this, key, value);
+    return value;
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.map.get-or-insert.js
+var es_map_get_or_insert_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var MapHelpers = (map_helpers_namespaceFn());
+var IS_PURE = (is_pure_namespaceFn());
+
+var get = MapHelpers.get;
+var has = MapHelpers.has;
+var set = MapHelpers.set;
+
+// `Map.prototype.getOrInsert` method
+// https://tc39.es/ecma262/#sec-map.prototype.getorinsert
+$({ target: 'Map', proto: true, real: true, forced: IS_PURE }, {
+  getOrInsert: function getOrInsert(key, value) {
+    if (has(this, key)) return get(this, key);
+    set(this, key, value);
+    return value;
+  }
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.difference.v2.js
+var es_set_difference_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var difference = (set_difference_namespaceFn());
+var fails = (fails_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var SET_LIKE_INCORRECT_BEHAVIOR = !setMethodAcceptSetLike('difference', function (result) {
+  return result.size === 0;
+});
+
+var FORCED = SET_LIKE_INCORRECT_BEHAVIOR || fails(function () {
+  // https://bugs.webkit.org/show_bug.cgi?id=288595
+  var setLike = {
+    size: 1,
+    has: function () { return true; },
+    keys: function () {
+      var index = 0;
+      return {
+        next: function () {
+          var done = index++ > 1;
+          if (baseSet.has(1)) baseSet.clear();
+          return { done: done, value: 2 };
+        }
+      };
+    }
+  };
+  // eslint-disable-next-line es/no-set -- testing
+  var baseSet = new Set([1, 2, 3, 4]);
+  // eslint-disable-next-line es/no-set-prototype-difference -- testing
+  return baseSet.difference(setLike).size !== 3;
+});
+
+// `Set.prototype.difference` method
+// https://tc39.es/ecma262/#sec-set.prototype.difference
+$({ target: 'Set', proto: true, real: true, forced: FORCED }, {
+  difference: difference
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.intersection.v2.js
+var es_set_intersection_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var fails = (fails_namespaceFn());
+var intersection = (set_intersection_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var INCORRECT = !setMethodAcceptSetLike('intersection', function (result) {
+  return result.size === 2 && result.has(1) && result.has(2);
+}) || fails(function () {
+  // eslint-disable-next-line es/no-array-from, es/no-set, es/no-set-prototype-intersection -- testing
+  return String(Array.from(new Set([1, 2, 3]).intersection(new Set([3, 2])))) !== '3,2';
+});
+
+// `Set.prototype.intersection` method
+// https://tc39.es/ecma262/#sec-set.prototype.intersection
+$({ target: 'Set', proto: true, real: true, forced: INCORRECT }, {
+  intersection: intersection
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.is-disjoint-from.v2.js
+var es_set_is_disjoint_from_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var isDisjointFrom = (set_is_disjoint_from_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var INCORRECT = !setMethodAcceptSetLike('isDisjointFrom', function (result) {
+  return !result;
+});
+
+// `Set.prototype.isDisjointFrom` method
+// https://tc39.es/ecma262/#sec-set.prototype.isdisjointfrom
+$({ target: 'Set', proto: true, real: true, forced: INCORRECT }, {
+  isDisjointFrom: isDisjointFrom
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.is-subset-of.v2.js
+var es_set_is_subset_of_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var isSubsetOf = (set_is_subset_of_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var INCORRECT = !setMethodAcceptSetLike('isSubsetOf', function (result) {
+  return result;
+});
+
+// `Set.prototype.isSubsetOf` method
+// https://tc39.es/ecma262/#sec-set.prototype.issubsetof
+$({ target: 'Set', proto: true, real: true, forced: INCORRECT }, {
+  isSubsetOf: isSubsetOf
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.is-superset-of.v2.js
+var es_set_is_superset_of_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var isSupersetOf = (set_is_superset_of_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var INCORRECT = !setMethodAcceptSetLike('isSupersetOf', function (result) {
+  return !result;
+});
+
+// `Set.prototype.isSupersetOf` method
+// https://tc39.es/ecma262/#sec-set.prototype.issupersetof
+$({ target: 'Set', proto: true, real: true, forced: INCORRECT }, {
+  isSupersetOf: isSupersetOf
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.symmetric-difference.v2.js
+var es_set_symmetric_difference_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var symmetricDifference = (set_symmetric_difference_namespaceFn());
+var setMethodGetKeysBeforeCloning = (set_method_get_keys_before_cloning_detection_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var FORCED = !setMethodAcceptSetLike('symmetricDifference') || !setMethodGetKeysBeforeCloning('symmetricDifference');
+
+// `Set.prototype.symmetricDifference` method
+// https://tc39.es/ecma262/#sec-set.prototype.symmetricdifference
+$({ target: 'Set', proto: true, real: true, forced: FORCED }, {
+  symmetricDifference: symmetricDifference
+});
+
+});
+
+// MODULE: ./node_modules/core-js/modules/es.set.union.v2.js
+var es_set_union_v2_namespaceFn = /*#__PURE__*/__webpack_require__.cw(() => {
+
+var $ = (export_namespaceFn());
+var union = (set_union_namespaceFn());
+var setMethodGetKeysBeforeCloning = (set_method_get_keys_before_cloning_detection_namespaceFn());
+var setMethodAcceptSetLike = (set_method_accept_set_like_namespaceFn());
+
+var FORCED = !setMethodAcceptSetLike('union') || !setMethodGetKeysBeforeCloning('union');
+
+// `Set.prototype.union` method
+// https://tc39.es/ecma262/#sec-set.prototype.union
+$({ target: 'Set', proto: true, real: true, forced: FORCED }, {
+  union: union
+});
+
+});
+
 ;// ./node_modules/core-js/modules/es.array.includes.js
 es_array_includes_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.array.push.js
+es_array_push_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.iterator.constructor.js
+es_iterator_constructor_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.iterator.filter.js
+es_iterator_filter_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.iterator.for-each.js
+es_iterator_for_each_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.iterator.map.js
+es_iterator_map_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.iterator.some.js
+es_iterator_some_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.json.stringify.js
+es_json_stringify_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.map.get-or-insert.js
+es_map_get_or_insert_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.map.get-or-insert-computed.js
+es_map_get_or_insert_computed_namespaceFn();
 
 ;// external "path"
 
 ;// external "util"
 
 ;// ./package.json
-const package_namespaceObject = {"rE":"0.0.3-1"};
+const package_namespaceObject = {"rE":"0.0.4"};
+;// ./node_modules/core-js/modules/es.json.parse.js
+es_json_parse_namespaceFn();
+
 ;// external "crypto"
 
 ;// external "fs/promises"
+
+;// ./node_modules/core-js/modules/es.iterator.every.js
+es_iterator_every_namespaceFn();
 
 ;// ./src/content.ts
 // #!/usr/bin/env babel-node
@@ -1674,11 +4027,11 @@ const package_namespaceObject = {"rE":"0.0.3-1"};
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function _typeof(o){"@babel/helpers - typeof";return _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},_typeof(o)}function _regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return _regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),_regeneratorDefine2(f),_regeneratorDefine2(f,a,"Generator"),_regeneratorDefine2(f,n,function(){return this}),_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(_regenerator=function _regenerator(){return{w:i,m:p}})()}function _regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},_regeneratorDefine2(e,r,n,t)}function _defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,_toPropertyKey(i.key),i)}}function _createClass(e,r,t){return r&&_defineProperties(e.prototype,r),t&&_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function _classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function _inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&_setPrototypeOf(t,r)}function _callSuper(e,c,p){return c=_getPrototypeOf(c),_possibleConstructorReturn(e,_isNativeReflectConstruct()?Reflect.construct(c,p||[],_getPrototypeOf(e).constructor):c.apply(e,p))}function _possibleConstructorReturn(t,e){if(e&&("object"==_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return _assertThisInitialized(t)}function _assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function _wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return _wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return _construct(p,arguments,_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),_setPrototypeOf(Wrapper,p)},_wrapNativeSuper(p)}function _construct(e,o,p){if(_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&_setPrototypeOf(l,p.prototype),l}function _isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function _isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function _setPrototypeOf(t,e){return _setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},_setPrototypeOf(t,e)}function _getPrototypeOf(t){return _getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},_getPrototypeOf(t)}function _defineProperty(r,t,o){return(t=_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function _toPropertyKey(r){var o=_toPrimitive(r,"string");return"symbol"==_typeof(o)?o:o+""}function _toPrimitive(t,e){if("object"!=_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}function _asyncIterator(r){var n,t,o,e=2;for("undefined"!=typeof Symbol&&(t=Symbol.asyncIterator,o=Symbol.iterator);e--;){if(t&&null!=(n=r[t]))return n.call(r);if(o&&null!=(n=r[o]))return new AsyncFromSyncIterator(n.call(r));t="@@asyncIterator",o="@@iterator"}throw new TypeError("Object is not async iterable")}function AsyncFromSyncIterator(r){function AsyncFromSyncIteratorContinuation(r){if(Object(r)!==r)return Promise.reject(new TypeError(r+" is not an object."));var n=r.done;return Promise.resolve(r.value).then(function(r){return{value:r,done:n}})}return AsyncFromSyncIterator=function AsyncFromSyncIterator(r){this.s=r,this.n=r.next},AsyncFromSyncIterator.prototype={s:null,n:null,next:function next(){return AsyncFromSyncIteratorContinuation(this.n.apply(this.s,arguments))},return:function _return(r){var n=this.s.return;return void 0===n?Promise.resolve({value:r,done:!0}):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))},throw:function _throw(r){var n=this.s.throw;return void 0===n?Promise.reject(r):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))}},new AsyncFromSyncIterator(r)}function _awaitAsyncGenerator(r){return new _OverloadYield(r,0)}function _wrapAsyncGenerator(e){return function(){return new AsyncGenerator(e.apply(this,arguments))}}function AsyncGenerator(t){var n,r;function resume(n,r){try{var o=t[n](r),u=o.value,i=u instanceof _OverloadYield;Promise.resolve(i?u.v:u).then(function(e){if(i){var r="return"===n&&u.k?n:"next";if(!u.k||e.done)return resume(r,e);e=t[r](e).value}settle(!!o.done,e)},function(e){resume("throw",e)})}catch(e){settle(2,e)}}function settle(e,t){2===e?n.reject(t):n.resolve({value:t,done:e}),(n=n.next)?resume(n.key,n.arg):r=null}this._invoke=function(e,t){return new Promise(function(o,u){var i={key:e,arg:t,resolve:o,reject:u,next:null};r?r=r.next=i:(n=r=i,resume(e,t))})},"function"!=typeof t.return&&(this.return=void 0)}AsyncGenerator.prototype["function"==typeof Symbol&&Symbol.asyncIterator||"@@asyncIterator"]=function(){return this},AsyncGenerator.prototype.next=function(e){return this._invoke("next",e)},AsyncGenerator.prototype.throw=function(e){return this._invoke("throw",e)},AsyncGenerator.prototype.return=function(e){return this._invoke("return",e)};function _OverloadYield(e,d){this.v=e,this.k=d};// endregion
+function _typeof(o){"@babel/helpers - typeof";return _typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},_typeof(o)}function _regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return _regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),_regeneratorDefine2(f),_regeneratorDefine2(f,a,"Generator"),_regeneratorDefine2(f,n,function(){return this}),_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(_regenerator=function _regenerator(){return{w:i,m:p}})()}function _regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},_regeneratorDefine2(e,r,n,t)};function _defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,_toPropertyKey(i.key),i)}}function _createClass(e,r,t){return r&&_defineProperties(e.prototype,r),t&&_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function _classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function _inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&_setPrototypeOf(t,r)}function _callSuper(e,c,p){return c=_getPrototypeOf(c),_possibleConstructorReturn(e,_isNativeReflectConstruct()?Reflect.construct(c,p||[],_getPrototypeOf(e).constructor):c.apply(e,p))}function _possibleConstructorReturn(t,e){if(e&&("object"==_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return _assertThisInitialized(t)}function _assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function _wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return _wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return _construct(p,arguments,_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),_setPrototypeOf(Wrapper,p)},_wrapNativeSuper(p)}function _construct(e,o,p){if(_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&_setPrototypeOf(l,p.prototype),l}function _isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function _isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function _setPrototypeOf(t,e){return _setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},_setPrototypeOf(t,e)}function _getPrototypeOf(t){return _getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},_getPrototypeOf(t)}function _defineProperty(r,t,o){return(t=_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function _toPropertyKey(r){var o=_toPrimitive(r,"string");return"symbol"==_typeof(o)?o:o+""}function _toPrimitive(t,e){if("object"!=_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}function _asyncIterator(r){var n,t,o,e=2;for("undefined"!=typeof Symbol&&(t=Symbol.asyncIterator,o=Symbol.iterator);e--;){if(t&&null!=(n=r[t]))return n.call(r);if(o&&null!=(n=r[o]))return new AsyncFromSyncIterator(n.call(r));t="@@asyncIterator",o="@@iterator"}throw new TypeError("Object is not async iterable")}function AsyncFromSyncIterator(r){function AsyncFromSyncIteratorContinuation(r){if(Object(r)!==r)return Promise.reject(new TypeError(r+" is not an object."));var n=r.done;return Promise.resolve(r.value).then(function(r){return{value:r,done:n}})}return AsyncFromSyncIterator=function AsyncFromSyncIterator(r){this.s=r,this.n=r.next},AsyncFromSyncIterator.prototype={s:null,n:null,next:function next(){return AsyncFromSyncIteratorContinuation(this.n.apply(this.s,arguments))},return:function _return(r){var n=this.s.return;return void 0===n?Promise.resolve({value:r,done:!0}):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))},throw:function _throw(r){var n=this.s.throw;return void 0===n?Promise.reject(r):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))}},new AsyncFromSyncIterator(r)}function _awaitAsyncGenerator(r){return new _OverloadYield(r,0)}function _wrapAsyncGenerator(e){return function(){return new AsyncGenerator(e.apply(this,arguments))}}function AsyncGenerator(t){var n,r;function resume(n,r){try{var o=t[n](r),u=o.value,i=u instanceof _OverloadYield;Promise.resolve(i?u.v:u).then(function(e){if(i){var r="return"===n&&u.k?n:"next";if(!u.k||e.done)return resume(r,e);e=t[r](e).value}settle(!!o.done,e)},function(e){resume("throw",e)})}catch(e){settle(2,e)}}function settle(e,t){2===e?n.reject(t):n.resolve({value:t,done:e}),(n=n.next)?resume(n.key,n.arg):r=null}this._invoke=function(e,t){return new Promise(function(o,u){var i={key:e,arg:t,resolve:o,reject:u,next:null};r?r=r.next=i:(n=r=i,resume(e,t))})},"function"!=typeof t.return&&(this.return=void 0)}AsyncGenerator.prototype["function"==typeof Symbol&&Symbol.asyncIterator||"@@asyncIterator"]=function(){return this},AsyncGenerator.prototype.next=function(e){return this._invoke("next",e)},AsyncGenerator.prototype.throw=function(e){return this._invoke("throw",e)},AsyncGenerator.prototype.return=function(e){return this._invoke("return",e)};function _OverloadYield(e,d){this.v=e,this.k=d};// endregion
 /*
     On-disk layout of a gocryptfs (format version 2) file:
 
@@ -1767,11 +4120,11 @@ case 4:if(!(length<chunkSize)){_context.n=7;break}_context.n=5;return _awaitAsyn
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function configuration_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return configuration_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(configuration_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,configuration_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,configuration_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),configuration_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",configuration_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),configuration_regeneratorDefine2(f),configuration_regeneratorDefine2(f,a,"Generator"),configuration_regeneratorDefine2(f,n,function(){return this}),configuration_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(configuration_regenerator=function _regenerator(){return{w:i,m:p}})()}function configuration_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}configuration_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){configuration_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},configuration_regeneratorDefine2(e,r,n,t)}function asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function _asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}};function _createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function _unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return _arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?_arrayLikeToArray(t,e):void 0}}function _arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function configuration_typeof(o){"@babel/helpers - typeof";return configuration_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},configuration_typeof(o)}function configuration_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,configuration_toPropertyKey(i.key),i)}}function configuration_createClass(e,r,t){return r&&configuration_defineProperties(e.prototype,r),t&&configuration_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function configuration_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function configuration_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&configuration_setPrototypeOf(t,r)}function configuration_callSuper(e,c,p){return c=configuration_getPrototypeOf(c),configuration_possibleConstructorReturn(e,configuration_isNativeReflectConstruct()?Reflect.construct(c,p||[],configuration_getPrototypeOf(e).constructor):c.apply(e,p))}function configuration_possibleConstructorReturn(t,e){if(e&&("object"==configuration_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return configuration_assertThisInitialized(t)}function configuration_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function configuration_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return configuration_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!configuration_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return configuration_construct(p,arguments,configuration_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),configuration_setPrototypeOf(Wrapper,p)},configuration_wrapNativeSuper(p)}function configuration_construct(e,o,p){if(configuration_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&configuration_setPrototypeOf(l,p.prototype),l}function configuration_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(configuration_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function configuration_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function configuration_setPrototypeOf(t,e){return configuration_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},configuration_setPrototypeOf(t,e)}function configuration_getPrototypeOf(t){return configuration_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},configuration_getPrototypeOf(t)}function configuration_defineProperty(r,t,o){return(t=configuration_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function configuration_toPropertyKey(r){var o=configuration_toPrimitive(r,"string");return"symbol"==configuration_typeof(o)?o:o+""}function configuration_toPrimitive(t,e){if("object"!=configuration_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=configuration_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
+function configuration_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return configuration_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(configuration_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,configuration_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,configuration_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),configuration_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",configuration_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),configuration_regeneratorDefine2(f),configuration_regeneratorDefine2(f,a,"Generator"),configuration_regeneratorDefine2(f,n,function(){return this}),configuration_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(configuration_regenerator=function _regenerator(){return{w:i,m:p}})()}function configuration_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}configuration_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){configuration_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},configuration_regeneratorDefine2(e,r,n,t)}function asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function _asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function _createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function _unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return _arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?_arrayLikeToArray(t,e):void 0}}function _arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function configuration_typeof(o){"@babel/helpers - typeof";return configuration_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},configuration_typeof(o)};function configuration_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,configuration_toPropertyKey(i.key),i)}}function configuration_createClass(e,r,t){return r&&configuration_defineProperties(e.prototype,r),t&&configuration_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function configuration_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function configuration_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&configuration_setPrototypeOf(t,r)}function configuration_callSuper(e,c,p){return c=configuration_getPrototypeOf(c),configuration_possibleConstructorReturn(e,configuration_isNativeReflectConstruct()?Reflect.construct(c,p||[],configuration_getPrototypeOf(e).constructor):c.apply(e,p))}function configuration_possibleConstructorReturn(t,e){if(e&&("object"==configuration_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return configuration_assertThisInitialized(t)}function configuration_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function configuration_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return configuration_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!configuration_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return configuration_construct(p,arguments,configuration_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),configuration_setPrototypeOf(Wrapper,p)},configuration_wrapNativeSuper(p)}function configuration_construct(e,o,p){if(configuration_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&configuration_setPrototypeOf(l,p.prototype),l}function configuration_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(configuration_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function configuration_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function configuration_setPrototypeOf(t,e){return configuration_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},configuration_setPrototypeOf(t,e)}function configuration_getPrototypeOf(t){return configuration_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},configuration_getPrototypeOf(t)}function configuration_defineProperty(r,t,o){return(t=configuration_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function configuration_toPropertyKey(r){var o=configuration_toPrimitive(r,"string");return"symbol"==configuration_typeof(o)?o:o+""}function configuration_toPrimitive(t,e){if("object"!=configuration_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=configuration_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
 var scrypt=__WEBPACK_EXTERNAL_MODULE_util_promisify__(__WEBPACK_EXTERNAL_MODULE_crypto_scrypt__);// Looked up in this order in the vault root, the first one gets created.
 var CONFIGURATION_FILE_NAMES=["gocryptfs.conf",".gocryptfs.conf"];var CONFIGURATION_FILE_NAME=CONFIGURATION_FILE_NAMES[0];var SUPPORTED_VERSION=2;/*
     NOTE: Exactly the feature flag set "gocryptfs -init -plaintextnames"
@@ -1856,11 +4209,11 @@ featureFlags=["HKDF","GCMIV128","PlaintextNames"];configuration={creator:CREATOR
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function state_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=state_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function state_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return state_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?state_arrayLikeToArray(t,e):void 0}}function state_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function state_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return state_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(state_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,state_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,state_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),state_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",state_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),state_regeneratorDefine2(f),state_regeneratorDefine2(f,a,"Generator"),state_regeneratorDefine2(f,n,function(){return this}),state_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(state_regenerator=function _regenerator(){return{w:i,m:p}})()}function state_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}state_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){state_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},state_regeneratorDefine2(e,r,n,t)}function state_typeof(o){"@babel/helpers - typeof";return state_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},state_typeof(o)}function state_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function state_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){state_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){state_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function state_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,state_toPropertyKey(i.key),i)}}function state_createClass(e,r,t){return r&&state_defineProperties(e.prototype,r),t&&state_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function state_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function state_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&state_setPrototypeOf(t,r)}function state_callSuper(e,c,p){return c=state_getPrototypeOf(c),state_possibleConstructorReturn(e,state_isNativeReflectConstruct()?Reflect.construct(c,p||[],state_getPrototypeOf(e).constructor):c.apply(e,p))}function state_possibleConstructorReturn(t,e){if(e&&("object"==state_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return state_assertThisInitialized(t)}function state_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function state_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return state_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!state_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return state_construct(p,arguments,state_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),state_setPrototypeOf(Wrapper,p)},state_wrapNativeSuper(p)}function state_construct(e,o,p){if(state_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&state_setPrototypeOf(l,p.prototype),l}function state_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(state_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function state_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function state_setPrototypeOf(t,e){return state_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},state_setPrototypeOf(t,e)}function state_getPrototypeOf(t){return state_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},state_getPrototypeOf(t)}function state_defineProperty(r,t,o){return(t=state_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function state_toPropertyKey(r){var o=state_toPrimitive(r,"string");return"symbol"==state_typeof(o)?o:o+""}function state_toPrimitive(t,e){if("object"!=state_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=state_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
+function state_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=state_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function state_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return state_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?state_arrayLikeToArray(t,e):void 0}}function state_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function state_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return state_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(state_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,state_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,state_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),state_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",state_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),state_regeneratorDefine2(f),state_regeneratorDefine2(f,a,"Generator"),state_regeneratorDefine2(f,n,function(){return this}),state_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(state_regenerator=function _regenerator(){return{w:i,m:p}})()}function state_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}state_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){state_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},state_regeneratorDefine2(e,r,n,t)}function state_typeof(o){"@babel/helpers - typeof";return state_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},state_typeof(o)};function state_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function state_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){state_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){state_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function state_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,state_toPropertyKey(i.key),i)}}function state_createClass(e,r,t){return r&&state_defineProperties(e.prototype,r),t&&state_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function state_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function state_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&state_setPrototypeOf(t,r)}function state_callSuper(e,c,p){return c=state_getPrototypeOf(c),state_possibleConstructorReturn(e,state_isNativeReflectConstruct()?Reflect.construct(c,p||[],state_getPrototypeOf(e).constructor):c.apply(e,p))}function state_possibleConstructorReturn(t,e){if(e&&("object"==state_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return state_assertThisInitialized(t)}function state_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function state_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return state_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!state_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return state_construct(p,arguments,state_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),state_setPrototypeOf(Wrapper,p)},state_wrapNativeSuper(p)}function state_construct(e,o,p){if(state_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&state_setPrototypeOf(l,p.prototype),l}function state_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(state_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function state_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function state_setPrototypeOf(t,e){return state_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},state_setPrototypeOf(t,e)}function state_getPrototypeOf(t){return state_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},state_getPrototypeOf(t)}function state_defineProperty(r,t,o){return(t=state_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function state_toPropertyKey(r){var o=state_toPrimitive(r,"string");return"symbol"==state_typeof(o)?o:o+""}function state_toPrimitive(t,e){if("object"!=state_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=state_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
 var APPLICATION_NAME="gocryptfs-standalone";var CONFIGURATION_DIRECTORY_ENVIRONMENT_VARIABLE_NAME="GOCRYPTFS_STANDALONE_CONFIGURATION_DIRECTORY";var STATE_FILE_NAME="state.json";var LOCK_FILE_NAME="lock";// Held by a daemon as long as it watches the pair.
 var DAEMON_LOCK_FILE_NAME="daemon.lock";var TRASH_DIRECTORY_NAME="trash";var DEFAULT_TRASH_RETENTION_IN_DAYS=30;var LockedError=/*#__PURE__*/function(_Error){function LockedError(){var _this;state_classCallCheck(this,LockedError);for(var _len=arguments.length,args=new Array(_len),_key=0;_key<_len;_key++){args[_key]=arguments[_key]}_this=state_callSuper(this,LockedError,[].concat(args));state_defineProperty(_this,"name","LockedError");return _this}state_inherits(LockedError,_Error);return state_createClass(LockedError)}(/*#__PURE__*/state_wrapNativeSuper(Error));/**
  * Determines the user specific configuration directory of this application:
@@ -1938,11 +4291,11 @@ date.toISOString().replace(/:/g,"-"),side==="plain"?"plaintext":"vault")};/**
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function _toConsumableArray(a){return _arrayWithoutHoles(a)||_iterableToArray(a)||daemon_unsupportedIterableToArray(a)||_nonIterableSpread()}function _nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function _iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function _arrayWithoutHoles(a){if(Array.isArray(a))return daemon_arrayLikeToArray(a)}function daemon_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=daemon_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function daemon_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return daemon_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?daemon_arrayLikeToArray(t,e):void 0}}function daemon_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function daemon_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return daemon_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(daemon_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,daemon_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,daemon_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),daemon_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",daemon_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),daemon_regeneratorDefine2(f),daemon_regeneratorDefine2(f,a,"Generator"),daemon_regeneratorDefine2(f,n,function(){return this}),daemon_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(daemon_regenerator=function _regenerator(){return{w:i,m:p}})()}function daemon_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}daemon_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){daemon_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},daemon_regeneratorDefine2(e,r,n,t)}function daemon_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function daemon_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){daemon_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){daemon_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}};// endregion
+function _toConsumableArray(a){return _arrayWithoutHoles(a)||_iterableToArray(a)||daemon_unsupportedIterableToArray(a)||_nonIterableSpread()}function _nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function _iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function _arrayWithoutHoles(a){if(Array.isArray(a))return daemon_arrayLikeToArray(a)}function daemon_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=daemon_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function daemon_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return daemon_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?daemon_arrayLikeToArray(t,e):void 0}}function daemon_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function daemon_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return daemon_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(daemon_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,daemon_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,daemon_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),daemon_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",daemon_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),daemon_regeneratorDefine2(f),daemon_regeneratorDefine2(f,a,"Generator"),daemon_regeneratorDefine2(f,n,function(){return this}),daemon_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(daemon_regenerator=function _regenerator(){return{w:i,m:p}})()}function daemon_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}daemon_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){daemon_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},daemon_regeneratorDefine2(e,r,n,t)};function daemon_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function daemon_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){daemon_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){daemon_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}};// endregion
 // Waits for this long without further changes before synchronizing.
 var QUIET_PERIOD_IN_MILLISECONDS=2*1000;// Synchronizes at the latest after this long while changes keep coming.
 var MAXIMAL_CHANGE_DELAY_IN_MILLISECONDS=30*1000;// Restarts a failed watcher after this long.
@@ -1989,8 +4342,8 @@ if(!isStopped()&&state.watchAt!==undefined&&state.watchAt<=Date.now())startWatch
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 // endregion
@@ -2026,11 +4379,11 @@ if(!isStopped()&&state.watchAt!==undefined&&state.watchAt<=Date.now())startWatch
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function keychain_typeof(o){"@babel/helpers - typeof";return keychain_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},keychain_typeof(o)}function keychain_toConsumableArray(a){return keychain_arrayWithoutHoles(a)||keychain_iterableToArray(a)||keychain_unsupportedIterableToArray(a)||keychain_nonIterableSpread()}function keychain_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function keychain_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return keychain_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?keychain_arrayLikeToArray(t,e):void 0}}function keychain_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function keychain_arrayWithoutHoles(a){if(Array.isArray(a))return keychain_arrayLikeToArray(a)}function keychain_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function keychain_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return keychain_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(keychain_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,keychain_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,keychain_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),keychain_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",keychain_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),keychain_regeneratorDefine2(f),keychain_regeneratorDefine2(f,a,"Generator"),keychain_regeneratorDefine2(f,n,function(){return this}),keychain_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(keychain_regenerator=function _regenerator(){return{w:i,m:p}})()}function keychain_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}keychain_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){keychain_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},keychain_regeneratorDefine2(e,r,n,t)}function keychain_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function keychain_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){keychain_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){keychain_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function keychain_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,keychain_toPropertyKey(i.key),i)}}function keychain_createClass(e,r,t){return r&&keychain_defineProperties(e.prototype,r),t&&keychain_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function keychain_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function keychain_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&keychain_setPrototypeOf(t,r)}function keychain_callSuper(e,c,p){return c=keychain_getPrototypeOf(c),keychain_possibleConstructorReturn(e,keychain_isNativeReflectConstruct()?Reflect.construct(c,p||[],keychain_getPrototypeOf(e).constructor):c.apply(e,p))}function keychain_possibleConstructorReturn(t,e){if(e&&("object"==keychain_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return keychain_assertThisInitialized(t)}function keychain_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function keychain_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return keychain_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!keychain_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return keychain_construct(p,arguments,keychain_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),keychain_setPrototypeOf(Wrapper,p)},keychain_wrapNativeSuper(p)}function keychain_construct(e,o,p){if(keychain_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&keychain_setPrototypeOf(l,p.prototype),l}function keychain_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(keychain_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function keychain_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function keychain_setPrototypeOf(t,e){return keychain_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},keychain_setPrototypeOf(t,e)}function keychain_getPrototypeOf(t){return keychain_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},keychain_getPrototypeOf(t)}function keychain_defineProperty(r,t,o){return(t=keychain_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function keychain_toPropertyKey(r){var o=keychain_toPrimitive(r,"string");return"symbol"==keychain_typeof(o)?o:o+""}function keychain_toPrimitive(t,e){if("object"!=keychain_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=keychain_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
+function keychain_typeof(o){"@babel/helpers - typeof";return keychain_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},keychain_typeof(o)}function keychain_toConsumableArray(a){return keychain_arrayWithoutHoles(a)||keychain_iterableToArray(a)||keychain_unsupportedIterableToArray(a)||keychain_nonIterableSpread()}function keychain_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function keychain_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return keychain_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?keychain_arrayLikeToArray(t,e):void 0}}function keychain_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function keychain_arrayWithoutHoles(a){if(Array.isArray(a))return keychain_arrayLikeToArray(a)}function keychain_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function keychain_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return keychain_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(keychain_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,keychain_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,keychain_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),keychain_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",keychain_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),keychain_regeneratorDefine2(f),keychain_regeneratorDefine2(f,a,"Generator"),keychain_regeneratorDefine2(f,n,function(){return this}),keychain_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(keychain_regenerator=function _regenerator(){return{w:i,m:p}})()}function keychain_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}keychain_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){keychain_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},keychain_regeneratorDefine2(e,r,n,t)}function keychain_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function keychain_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){keychain_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){keychain_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}};function keychain_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,keychain_toPropertyKey(i.key),i)}}function keychain_createClass(e,r,t){return r&&keychain_defineProperties(e.prototype,r),t&&keychain_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function keychain_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function keychain_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&keychain_setPrototypeOf(t,r)}function keychain_callSuper(e,c,p){return c=keychain_getPrototypeOf(c),keychain_possibleConstructorReturn(e,keychain_isNativeReflectConstruct()?Reflect.construct(c,p||[],keychain_getPrototypeOf(e).constructor):c.apply(e,p))}function keychain_possibleConstructorReturn(t,e){if(e&&("object"==keychain_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return keychain_assertThisInitialized(t)}function keychain_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function keychain_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return keychain_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!keychain_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return keychain_construct(p,arguments,keychain_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),keychain_setPrototypeOf(Wrapper,p)},keychain_wrapNativeSuper(p)}function keychain_construct(e,o,p){if(keychain_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&keychain_setPrototypeOf(l,p.prototype),l}function keychain_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(keychain_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function keychain_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function keychain_setPrototypeOf(t,e){return keychain_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},keychain_setPrototypeOf(t,e)}function keychain_getPrototypeOf(t){return keychain_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},keychain_getPrototypeOf(t)}function keychain_defineProperty(r,t,o){return(t=keychain_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function keychain_toPropertyKey(r){var o=keychain_toPrimitive(r,"string");return"symbol"==keychain_typeof(o)?o:o+""}function keychain_toPrimitive(t,e){if("object"!=keychain_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=keychain_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
 /*
     Stores passwords in the operating system's credential store without
     native modules by using the tools every user can run:
@@ -2083,8 +4436,8 @@ function keychain_typeof(o){"@babel/helpers - typeof";return keychain_typeof="fu
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 function password_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return password_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(password_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,password_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,password_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),password_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",password_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),password_regeneratorDefine2(f),password_regeneratorDefine2(f,a,"Generator"),password_regeneratorDefine2(f,n,function(){return this}),password_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(password_regenerator=function _regenerator(){return{w:i,m:p}})()}function password_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}password_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){password_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},password_regeneratorDefine2(e,r,n,t)}function password_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function password_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){password_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){password_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function password_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=password_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function password_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return password_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?password_arrayLikeToArray(t,e):void 0}}function password_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n};// endregion
@@ -2129,8 +4482,8 @@ var PASSWORD_ENVIRONMENT_VARIABLE_NAME="GOCRYPTFS_PASSWORD";/**
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 function service_typeof(o){"@babel/helpers - typeof";return service_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},service_typeof(o)}function service_ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable})),t.push.apply(t,o)}return t}function _objectSpread(r){for(var t=1;t<arguments.length;t++){var o=null!=arguments[t]?arguments[t]:{};t%2?service_ownKeys(Object(o),!0).forEach(function(t){service_defineProperty(r,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(r,Object.getOwnPropertyDescriptors(o)):service_ownKeys(Object(o)).forEach(function(e){Object.defineProperty(r,e,Object.getOwnPropertyDescriptor(o,e))})}return r}function service_defineProperty(r,t,o){return(t=service_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function service_toPropertyKey(r){var o=service_toPrimitive(r,"string");return"symbol"==service_typeof(o)?o:o+""}function service_toPrimitive(t,e){if("object"!=service_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=service_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}function service_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return service_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(service_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,service_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,service_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),service_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",service_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),service_regeneratorDefine2(f),service_regeneratorDefine2(f,a,"Generator"),service_regeneratorDefine2(f,n,function(){return this}),service_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(service_regenerator=function _regenerator(){return{w:i,m:p}})()}function service_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}service_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){service_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},service_regeneratorDefine2(e,r,n,t)}function service_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function service_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){service_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){service_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function service_toConsumableArray(a){return service_arrayWithoutHoles(a)||service_iterableToArray(a)||service_unsupportedIterableToArray(a)||service_nonIterableSpread()}function service_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function service_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function service_arrayWithoutHoles(a){if(Array.isArray(a))return service_arrayLikeToArray(a)}function _slicedToArray(e,i){return _iterableToArrayLimit(e,i)||service_unsupportedIterableToArray(e,i)||_nonIterableRest()}function _nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function service_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return service_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?service_arrayLikeToArray(t,e):void 0}}function service_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function _iterableToArrayLimit(r,t){var e=null==r?null:"undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){var l,n,i,a,u=[],o=!0,f=!1;try{if(i=(e=e.call(r)).next,0===t){if(Object(e)!==e)return;o=!1}else for(;!(o=(l=i.call(e)).done)&&(u.push(l.value),u.length!==t);o=!0);}catch(r){f=!0,n=r}finally{try{if(!o&&null!=e.return&&(a=e.return(),Object(a)!==a))return}finally{if(f)throw n}}return u}};// endregion
@@ -2190,11 +4543,11 @@ function service_typeof(o){"@babel/helpers - typeof";return service_typeof="func
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function settings_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return settings_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(settings_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,settings_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,settings_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),settings_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",settings_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),settings_regeneratorDefine2(f),settings_regeneratorDefine2(f,a,"Generator"),settings_regeneratorDefine2(f,n,function(){return this}),settings_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(settings_regenerator=function _regenerator(){return{w:i,m:p}})()}function settings_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}settings_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){settings_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},settings_regeneratorDefine2(e,r,n,t)}function settings_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function settings_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){settings_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){settings_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function settings_toConsumableArray(a){return settings_arrayWithoutHoles(a)||settings_iterableToArray(a)||settings_unsupportedIterableToArray(a)||settings_nonIterableSpread()}function settings_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function settings_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return settings_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?settings_arrayLikeToArray(t,e):void 0}}function settings_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function settings_arrayWithoutHoles(a){if(Array.isArray(a))return settings_arrayLikeToArray(a)}function settings_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function settings_ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable})),t.push.apply(t,o)}return t}function settings_objectSpread(r){for(var t=1;t<arguments.length;t++){var o=null!=arguments[t]?arguments[t]:{};t%2?settings_ownKeys(Object(o),!0).forEach(function(t){settings_defineProperty(r,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(r,Object.getOwnPropertyDescriptors(o)):settings_ownKeys(Object(o)).forEach(function(e){Object.defineProperty(r,e,Object.getOwnPropertyDescriptor(o,e))})}return r}function settings_defineProperty(r,t,o){return(t=settings_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function settings_toPropertyKey(r){var o=settings_toPrimitive(r,"string");return"symbol"==settings_typeof(o)?o:o+""}function settings_toPrimitive(t,e){if("object"!=settings_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=settings_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}function settings_typeof(o){"@babel/helpers - typeof";return settings_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},settings_typeof(o)};// endregion
+function settings_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return settings_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(settings_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,settings_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,settings_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),settings_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",settings_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),settings_regeneratorDefine2(f),settings_regeneratorDefine2(f,a,"Generator"),settings_regeneratorDefine2(f,n,function(){return this}),settings_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(settings_regenerator=function _regenerator(){return{w:i,m:p}})()}function settings_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}settings_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){settings_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},settings_regeneratorDefine2(e,r,n,t)}function settings_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function settings_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){settings_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){settings_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function settings_toConsumableArray(a){return settings_arrayWithoutHoles(a)||settings_iterableToArray(a)||settings_unsupportedIterableToArray(a)||settings_nonIterableSpread()}function settings_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function settings_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return settings_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?settings_arrayLikeToArray(t,e):void 0}}function settings_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function settings_arrayWithoutHoles(a){if(Array.isArray(a))return settings_arrayLikeToArray(a)}function settings_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function settings_ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable})),t.push.apply(t,o)}return t}function settings_objectSpread(r){for(var t=1;t<arguments.length;t++){var o=null!=arguments[t]?arguments[t]:{};t%2?settings_ownKeys(Object(o),!0).forEach(function(t){settings_defineProperty(r,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(r,Object.getOwnPropertyDescriptors(o)):settings_ownKeys(Object(o)).forEach(function(e){Object.defineProperty(r,e,Object.getOwnPropertyDescriptor(o,e))})}return r}function settings_defineProperty(r,t,o){return(t=settings_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function settings_toPropertyKey(r){var o=settings_toPrimitive(r,"string");return"symbol"==settings_typeof(o)?o:o+""}function settings_toPrimitive(t,e){if("object"!=settings_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=settings_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};function settings_typeof(o){"@babel/helpers - typeof";return settings_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},settings_typeof(o)};// endregion
 var SETTINGS_FILE_NAME="configuration.json";var DEFAULT_INTERVAL="10m";var MINIMAL_INTERVAL_IN_MILLISECONDS=10*1000;// Typical operating system and office leftovers not worth synchronizing.
 var DEFAULT_EXCLUDES=[".DS_Store","._*",".~lock.*#","Thumbs.db","desktop.ini","~$*"];var PAIR_NAME_PATTERN=/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;/**
  * Where a pair's password comes from:
@@ -2235,6 +4588,27 @@ for(_i=0,_Object$keys=Object.keys(settings.pairs);_i<_Object$keys.length;_i++){n
  * @param configurationDirectory - Application configuration directory.
  * @returns Promise resolving when saved.
  */var saveSettings=/*#__PURE__*/function(){var _saveSettings=settings_asyncToGenerator(/*#__PURE__*/settings_regenerator().m(function _callee2(settings,configurationDirectory){var path;return settings_regenerator().w(function(_context2){while(1)switch(_context2.n){case 0:if(configurationDirectory===void 0){configurationDirectory=getConfigurationDirectory()}_context2.n=1;return __WEBPACK_EXTERNAL_MODULE_fs_promises_cc1b69f3_mkdir__(configurationDirectory,{recursive:true});case 1:path=getSettingsPath(configurationDirectory);_context2.n=2;return __WEBPACK_EXTERNAL_MODULE_fs_promises_cc1b69f3_writeFile__("".concat(path,".tmp"),"".concat(JSON.stringify(settings,null,4),"\n"),{mode:384});case 2:_context2.n=3;return __WEBPACK_EXTERNAL_MODULE_fs_promises_cc1b69f3_rename__("".concat(path,".tmp"),path);case 3:return _context2.a(2)}},_callee2)}));function saveSettings(_x2,_x3){return _saveSettings.apply(this,arguments)}return saveSettings}();
+;// ./node_modules/core-js/modules/es.set.difference.v2.js
+es_set_difference_v2_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.set.intersection.v2.js
+es_set_intersection_v2_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.set.is-disjoint-from.v2.js
+es_set_is_disjoint_from_v2_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.set.is-subset-of.v2.js
+es_set_is_subset_of_v2_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.set.is-superset-of.v2.js
+es_set_is_superset_of_v2_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.set.symmetric-difference.v2.js
+es_set_symmetric_difference_v2_namespaceFn();
+
+;// ./node_modules/core-js/modules/es.set.union.v2.js
+es_set_union_v2_namespaceFn();
+
 ;// ./src/plan.ts
 // #!/usr/bin/env babel-node
 // -*- coding: utf-8 -*-
@@ -2248,8 +4622,8 @@ for(_i=0,_Object$keys=Object.keys(settings.pairs);_i<_Object$keys.length;_i++){n
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 function plan_typeof(o){"@babel/helpers - typeof";return plan_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},plan_typeof(o)}function plan_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=plan_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function plan_toConsumableArray(a){return plan_arrayWithoutHoles(a)||plan_iterableToArray(a)||plan_unsupportedIterableToArray(a)||plan_nonIterableSpread()}function plan_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function plan_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return plan_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?plan_arrayLikeToArray(t,e):void 0}}function plan_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function plan_arrayWithoutHoles(a){if(Array.isArray(a))return plan_arrayLikeToArray(a)}function plan_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function plan_ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable})),t.push.apply(t,o)}return t}function plan_objectSpread(r){for(var t=1;t<arguments.length;t++){var o=null!=arguments[t]?arguments[t]:{};t%2?plan_ownKeys(Object(o),!0).forEach(function(t){plan_defineProperty(r,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(r,Object.getOwnPropertyDescriptors(o)):plan_ownKeys(Object(o)).forEach(function(e){Object.defineProperty(r,e,Object.getOwnPropertyDescriptor(o,e))})}return r}function plan_defineProperty(r,t,o){return(t=plan_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function plan_toPropertyKey(r){var o=plan_toPrimitive(r,"string");return"symbol"==plan_typeof(o)?o:o+""}function plan_toPrimitive(t,e){if("object"!=plan_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=plan_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)};// endregion
@@ -2314,8 +4688,8 @@ first.type==="removeDirectory"?getDepth(second.path)-getDepth(first.path):0)||(f
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 function tree_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=tree_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function tree_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return tree_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?tree_arrayLikeToArray(t,e):void 0}}function tree_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n};function tree_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return tree_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(tree_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,tree_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,tree_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),tree_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",tree_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),tree_regeneratorDefine2(f),tree_regeneratorDefine2(f,a,"Generator"),tree_regeneratorDefine2(f,n,function(){return this}),tree_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(tree_regenerator=function _regenerator(){return{w:i,m:p}})()}function tree_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}tree_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){tree_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},tree_regeneratorDefine2(e,r,n,t)}function tree_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function tree_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){tree_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){tree_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}};// endregion
@@ -2401,11 +4775,11 @@ var TEMPORARY_FILE_PREFIX=".gocryptfs-standalone-";/**
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function synchronize_slicedToArray(e,i){return synchronize_iterableToArrayLimit(e,i)||synchronize_unsupportedIterableToArray(e,i)||synchronize_nonIterableRest()}function synchronize_nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function synchronize_iterableToArrayLimit(r,t){var e=null==r?null:"undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){var l,n,i,a,u=[],o=!0,f=!1;try{if(i=(e=e.call(r)).next,0===t){if(Object(e)!==e)return;o=!1}else for(;!(o=(l=i.call(e)).done)&&(u.push(l.value),u.length!==t);o=!0);}catch(r){f=!0,n=r}finally{try{if(!o&&null!=e.return&&(a=e.return(),Object(a)!==a))return}finally{if(f)throw n}}return u}}function synchronize_toConsumableArray(a){return synchronize_arrayWithoutHoles(a)||synchronize_iterableToArray(a)||synchronize_unsupportedIterableToArray(a)||synchronize_nonIterableSpread()}function synchronize_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function synchronize_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function synchronize_arrayWithoutHoles(a){if(Array.isArray(a))return synchronize_arrayLikeToArray(a)};function synchronize_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=synchronize_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function synchronize_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return synchronize_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?synchronize_arrayLikeToArray(t,e):void 0}}function synchronize_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function synchronize_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return synchronize_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(synchronize_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,synchronize_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,synchronize_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),synchronize_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",synchronize_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),synchronize_regeneratorDefine2(f),synchronize_regeneratorDefine2(f,a,"Generator"),synchronize_regeneratorDefine2(f,n,function(){return this}),synchronize_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(synchronize_regenerator=function _regenerator(){return{w:i,m:p}})()}function synchronize_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}synchronize_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){synchronize_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},synchronize_regeneratorDefine2(e,r,n,t)}function synchronize_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function synchronize_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){synchronize_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){synchronize_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function synchronize_asyncIterator(r){var n,t,o,e=2;for("undefined"!=typeof Symbol&&(t=Symbol.asyncIterator,o=Symbol.iterator);e--;){if(t&&null!=(n=r[t]))return n.call(r);if(o&&null!=(n=r[o]))return new synchronize_AsyncFromSyncIterator(n.call(r));t="@@asyncIterator",o="@@iterator"}throw new TypeError("Object is not async iterable")}function synchronize_AsyncFromSyncIterator(r){function AsyncFromSyncIteratorContinuation(r){if(Object(r)!==r)return Promise.reject(new TypeError(r+" is not an object."));var n=r.done;return Promise.resolve(r.value).then(function(r){return{value:r,done:n}})}return synchronize_AsyncFromSyncIterator=function AsyncFromSyncIterator(r){this.s=r,this.n=r.next},synchronize_AsyncFromSyncIterator.prototype={s:null,n:null,next:function next(){return AsyncFromSyncIteratorContinuation(this.n.apply(this.s,arguments))},return:function _return(r){var n=this.s.return;return void 0===n?Promise.resolve({value:r,done:!0}):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))},throw:function _throw(r){var n=this.s.throw;return void 0===n?Promise.reject(r):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))}},new synchronize_AsyncFromSyncIterator(r)};// endregion
+function synchronize_slicedToArray(e,i){return synchronize_iterableToArrayLimit(e,i)||synchronize_unsupportedIterableToArray(e,i)||synchronize_nonIterableRest()}function synchronize_nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function synchronize_iterableToArrayLimit(r,t){var e=null==r?null:"undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){var l,n,i,a,u=[],o=!0,f=!1;try{if(i=(e=e.call(r)).next,0===t){if(Object(e)!==e)return;o=!1}else for(;!(o=(l=i.call(e)).done)&&(u.push(l.value),u.length!==t);o=!0);}catch(r){f=!0,n=r}finally{try{if(!o&&null!=e.return&&(a=e.return(),Object(a)!==a))return}finally{if(f)throw n}}return u}}function synchronize_toConsumableArray(a){return synchronize_arrayWithoutHoles(a)||synchronize_iterableToArray(a)||synchronize_unsupportedIterableToArray(a)||synchronize_nonIterableSpread()}function synchronize_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function synchronize_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function synchronize_arrayWithoutHoles(a){if(Array.isArray(a))return synchronize_arrayLikeToArray(a)}function synchronize_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=synchronize_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function synchronize_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return synchronize_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?synchronize_arrayLikeToArray(t,e):void 0}}function synchronize_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n};function synchronize_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return synchronize_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(synchronize_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,synchronize_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,synchronize_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),synchronize_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",synchronize_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),synchronize_regeneratorDefine2(f),synchronize_regeneratorDefine2(f,a,"Generator"),synchronize_regeneratorDefine2(f,n,function(){return this}),synchronize_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(synchronize_regenerator=function _regenerator(){return{w:i,m:p}})()}function synchronize_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}synchronize_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){synchronize_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},synchronize_regeneratorDefine2(e,r,n,t)}function synchronize_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function synchronize_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){synchronize_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){synchronize_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function synchronize_asyncIterator(r){var n,t,o,e=2;for("undefined"!=typeof Symbol&&(t=Symbol.asyncIterator,o=Symbol.iterator);e--;){if(t&&null!=(n=r[t]))return n.call(r);if(o&&null!=(n=r[o]))return new synchronize_AsyncFromSyncIterator(n.call(r));t="@@asyncIterator",o="@@iterator"}throw new TypeError("Object is not async iterable")}function synchronize_AsyncFromSyncIterator(r){function AsyncFromSyncIteratorContinuation(r){if(Object(r)!==r)return Promise.reject(new TypeError(r+" is not an object."));var n=r.done;return Promise.resolve(r.value).then(function(r){return{value:r,done:n}})}return synchronize_AsyncFromSyncIterator=function AsyncFromSyncIterator(r){this.s=r,this.n=r.next},synchronize_AsyncFromSyncIterator.prototype={s:null,n:null,next:function next(){return AsyncFromSyncIteratorContinuation(this.n.apply(this.s,arguments))},return:function _return(r){var n=this.s.return;return void 0===n?Promise.resolve({value:r,done:!0}):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))},throw:function _throw(r){var n=this.s.throw;return void 0===n?Promise.reject(r):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))}},new synchronize_AsyncFromSyncIterator(r)};// endregion
 /**
  * Creates the snapshot of given file system entry.
  * @param path - Absolute path.
@@ -2466,8 +4840,8 @@ case 3:return _context10.a(2)}},_callee10)}));function refresh(_x22){return _ref
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
 function watch_slicedToArray(e,i){return watch_iterableToArrayLimit(e,i)||watch_unsupportedIterableToArray(e,i)||watch_nonIterableRest()}function watch_nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function watch_iterableToArrayLimit(r,t){var e=null==r?null:"undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){var l,n,i,a,u=[],o=!0,f=!1;try{if(i=(e=e.call(r)).next,0===t){if(Object(e)!==e)return;o=!1}else for(;!(o=(l=i.call(e)).done)&&(u.push(l.value),u.length!==t);o=!0);}catch(r){f=!0,n=r}finally{try{if(!o&&null!=e.return&&(a=e.return(),Object(a)!==a))return}finally{if(f)throw n}}return u}}function watch_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=watch_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function watch_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return watch_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?watch_arrayLikeToArray(t,e):void 0}}function watch_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n};// endregion
@@ -2521,11 +4895,11 @@ if(relativePath===null||relativePath==="")return true;if(isTemporaryPath(relativ
     -------
 
     This library written by Torben Sickert stands under a creative commons
-    naming 3.0 unported license.
-    See https://creativecommons.org/licenses/by/3.0/deed.de
+    naming 4.0 international license.
+    See https://creativecommons.org/licenses/by/4.0/deed.de
     endregion
 */// region imports
-function cli_typeof(o){"@babel/helpers - typeof";return cli_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},cli_typeof(o)}function cli_toConsumableArray(a){return cli_arrayWithoutHoles(a)||cli_iterableToArray(a)||cli_unsupportedIterableToArray(a)||cli_nonIterableSpread()}function cli_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function cli_arrayWithoutHoles(a){if(Array.isArray(a))return cli_arrayLikeToArray(a)}function cli_ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable})),t.push.apply(t,o)}return t}function cli_objectSpread(r){for(var t=1;t<arguments.length;t++){var o=null!=arguments[t]?arguments[t]:{};t%2?cli_ownKeys(Object(o),!0).forEach(function(t){cli_defineProperty(r,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(r,Object.getOwnPropertyDescriptors(o)):cli_ownKeys(Object(o)).forEach(function(e){Object.defineProperty(r,e,Object.getOwnPropertyDescriptor(o,e))})}return r};function cli_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return cli_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(cli_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,cli_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,cli_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),cli_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",cli_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),cli_regeneratorDefine2(f),cli_regeneratorDefine2(f,a,"Generator"),cli_regeneratorDefine2(f,n,function(){return this}),cli_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(cli_regenerator=function _regenerator(){return{w:i,m:p}})()}function cli_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}cli_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){cli_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},cli_regeneratorDefine2(e,r,n,t)}function _toArray(e){return cli_iterableToArray(e)||cli_unsupportedIterableToArray(e)||cli_nonIterableRest()}function cli_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function cli_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function cli_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){cli_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){cli_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function cli_slicedToArray(e,i){return cli_iterableToArrayLimit(e,i)||cli_unsupportedIterableToArray(e,i)||cli_nonIterableRest()}function cli_nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function cli_iterableToArrayLimit(r,t){var e=null==r?null:"undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){var l,n,i,a,u=[],o=!0,f=!1;try{if(i=(e=e.call(r)).next,0===t){if(Object(e)!==e)return;o=!1}else for(;!(o=(l=i.call(e)).done)&&(u.push(l.value),u.length!==t);o=!0);}catch(r){f=!0,n=r}finally{try{if(!o&&null!=e.return&&(a=e.return(),Object(a)!==a))return}finally{if(f)throw n}}return u}}function cli_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=cli_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function cli_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return cli_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?cli_arrayLikeToArray(t,e):void 0}}function cli_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function cli_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,cli_toPropertyKey(i.key),i)}}function cli_createClass(e,r,t){return r&&cli_defineProperties(e.prototype,r),t&&cli_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function cli_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function cli_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&cli_setPrototypeOf(t,r)}function cli_callSuper(e,c,p){return c=cli_getPrototypeOf(c),cli_possibleConstructorReturn(e,cli_isNativeReflectConstruct()?Reflect.construct(c,p||[],cli_getPrototypeOf(e).constructor):c.apply(e,p))}function cli_possibleConstructorReturn(t,e){if(e&&("object"==cli_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return cli_assertThisInitialized(t)}function cli_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function cli_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return cli_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!cli_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return cli_construct(p,arguments,cli_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),cli_setPrototypeOf(Wrapper,p)},cli_wrapNativeSuper(p)}function cli_construct(e,o,p){if(cli_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&cli_setPrototypeOf(l,p.prototype),l}function cli_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(cli_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function cli_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function cli_setPrototypeOf(t,e){return cli_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},cli_setPrototypeOf(t,e)}function cli_getPrototypeOf(t){return cli_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},cli_getPrototypeOf(t)}function cli_defineProperty(r,t,o){return(t=cli_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function cli_toPropertyKey(r){var o=cli_toPrimitive(r,"string");return"symbol"==cli_typeof(o)?o:o+""}function cli_toPrimitive(t,e){if("object"!=cli_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=cli_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}function cli_asyncIterator(r){var n,t,o,e=2;for("undefined"!=typeof Symbol&&(t=Symbol.asyncIterator,o=Symbol.iterator);e--;){if(t&&null!=(n=r[t]))return n.call(r);if(o&&null!=(n=r[o]))return new cli_AsyncFromSyncIterator(n.call(r));t="@@asyncIterator",o="@@iterator"}throw new TypeError("Object is not async iterable")}function cli_AsyncFromSyncIterator(r){function AsyncFromSyncIteratorContinuation(r){if(Object(r)!==r)return Promise.reject(new TypeError(r+" is not an object."));var n=r.done;return Promise.resolve(r.value).then(function(r){return{value:r,done:n}})}return cli_AsyncFromSyncIterator=function AsyncFromSyncIterator(r){this.s=r,this.n=r.next},cli_AsyncFromSyncIterator.prototype={s:null,n:null,next:function next(){return AsyncFromSyncIteratorContinuation(this.n.apply(this.s,arguments))},return:function _return(r){var n=this.s.return;return void 0===n?Promise.resolve({value:r,done:!0}):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))},throw:function _throw(r){var n=this.s.throw;return void 0===n?Promise.reject(r):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))}},new cli_AsyncFromSyncIterator(r)};// endregion
+function cli_typeof(o){"@babel/helpers - typeof";return cli_typeof="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(o){return typeof o}:function(o){return o&&"function"==typeof Symbol&&o.constructor===Symbol&&o!==Symbol.prototype?"symbol":typeof o},cli_typeof(o)}function cli_toConsumableArray(a){return cli_arrayWithoutHoles(a)||cli_iterableToArray(a)||cli_unsupportedIterableToArray(a)||cli_nonIterableSpread()}function cli_nonIterableSpread(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function cli_arrayWithoutHoles(a){if(Array.isArray(a))return cli_arrayLikeToArray(a)}function cli_ownKeys(e,r){var t=Object.keys(e);if(Object.getOwnPropertySymbols){var o=Object.getOwnPropertySymbols(e);r&&(o=o.filter(function(r){return Object.getOwnPropertyDescriptor(e,r).enumerable})),t.push.apply(t,o)}return t}function cli_objectSpread(r){for(var t=1;t<arguments.length;t++){var o=null!=arguments[t]?arguments[t]:{};t%2?cli_ownKeys(Object(o),!0).forEach(function(t){cli_defineProperty(r,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(r,Object.getOwnPropertyDescriptors(o)):cli_ownKeys(Object(o)).forEach(function(e){Object.defineProperty(r,e,Object.getOwnPropertyDescriptor(o,e))})}return r}function cli_regenerator(){/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */var r,e,o="function"==typeof Symbol?Symbol:{},n=o.iterator||"@@iterator",a=o.toStringTag||"@@toStringTag";function i(o,n,a,i){var u=n&&n.prototype instanceof Generator?n:Generator,f=Object.create(u.prototype);return cli_regeneratorDefine2(f,"_invoke",function(t,o,n){var a,i,u,f=0,p=n||[],y=!1,G={p:0,n:0,v:r,a:l,f:l.bind(r,4),d:function d(t,e){return a=t,i=0,u=r,G.n=e,c}};function l(t,o){for(i=t,u=o,e=0;!y&&f&&!n&&e<p.length;e++){var n,a=p[e],l=G.p,F=a[2];t>3?(n=F===o)&&(u=a[(i=a[4])?5:(i=3,3)],a[4]=a[5]=r):a[0]<=l&&((n=t<2&&l<a[1])?(i=0,G.v=o,G.n=a[1]):l<F&&(n=t<3||a[0]>o||o>F)&&(a[4]=t,a[5]=o,G.n=F,i=0))}if(n||t>1)return c;throw y=!0,o}return function(n,p,F){if(f>1)throw TypeError("Generator is already running");for(y&&1===p&&l(p,F),i=p,u=F;(e=i<2?r:u)||!y;){a||(i?i<3?(i>1&&(G.n=-1),l(i,u)):G.n=u:G.v=u);try{if(f=2,a){if(i||(n="next"),e=a[n]){if(!(e=e.call(a,u)))throw TypeError("iterator result is not an object");if(!e.done)return e;u=e.value,i<2&&(i=0)}else 1===i&&(e=a.return)&&e.call(a),i<2&&(u=TypeError("The iterator does not provide a '"+n+"' method"),i=1);a=r}else if((e=(y=G.n<0)?u:t.call(o,G))!==c)break}catch(t){a=r,i=1,u=t}finally{f=1}}return{value:e,done:y}}}(o,a,i),!0),f}var c={};function Generator(){}function GeneratorFunction(){}function GeneratorFunctionPrototype(){}e=Object.getPrototypeOf;var u=[][n]?e(e([][n]())):(cli_regeneratorDefine2(e={},n,function(){return this}),e),f=GeneratorFunctionPrototype.prototype=Generator.prototype=Object.create(u);function p(r){return Object.setPrototypeOf?Object.setPrototypeOf(r,GeneratorFunctionPrototype):(r.__proto__=GeneratorFunctionPrototype,cli_regeneratorDefine2(r,a,"GeneratorFunction")),r.prototype=Object.create(f),r}return GeneratorFunction.prototype=GeneratorFunctionPrototype,cli_regeneratorDefine2(f,"constructor",GeneratorFunctionPrototype),cli_regeneratorDefine2(GeneratorFunctionPrototype,"constructor",GeneratorFunction),GeneratorFunction.displayName="GeneratorFunction",cli_regeneratorDefine2(GeneratorFunctionPrototype,a,"GeneratorFunction"),cli_regeneratorDefine2(f),cli_regeneratorDefine2(f,a,"Generator"),cli_regeneratorDefine2(f,n,function(){return this}),cli_regeneratorDefine2(f,"toString",function(){return"[object Generator]"}),(cli_regenerator=function _regenerator(){return{w:i,m:p}})()}function cli_regeneratorDefine2(e,r,n,t){var i=Object.defineProperty;try{i({},"",{})}catch(e){i=0}cli_regeneratorDefine2=function _regeneratorDefine(e,r,n,t){function o(r,n){cli_regeneratorDefine2(e,r,function(e){return this._invoke(r,n,e)})}r?i?i(e,r,{value:n,enumerable:!t,configurable:!t,writable:!t}):e[r]=n:(o("next",0),o("throw",1),o("return",2))},cli_regeneratorDefine2(e,r,n,t)};function _toArray(e){return cli_iterableToArray(e)||cli_unsupportedIterableToArray(e)||cli_nonIterableRest()}function cli_iterableToArray(r){var e="undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){for(var t,o=[],a=e.call(r);!(t=a.next()).done;)o.push(t.value);return o}}function cli_asyncGeneratorStep(n,t,e,r,o,a,c){try{var i=n[a](c),u=i.value}catch(n){return void e(n)}i.done?t(u):Promise.resolve(u).then(r,o)}function cli_asyncToGenerator(n){return function(){var t=this,e=arguments;return new Promise(function(r,o){var a=n.apply(t,e);function _next(n){cli_asyncGeneratorStep(a,r,o,_next,_throw,"next",n)}function _throw(n){cli_asyncGeneratorStep(a,r,o,_next,_throw,"throw",n)}_next(void 0)})}}function cli_slicedToArray(e,i){return cli_iterableToArrayLimit(e,i)||cli_unsupportedIterableToArray(e,i)||cli_nonIterableRest()}function cli_nonIterableRest(){throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}function cli_iterableToArrayLimit(r,t){var e=null==r?null:"undefined"!=typeof Symbol&&r[Symbol.iterator]||r["@@iterator"];if(Array.isArray(r)&&(null==e||e===("undefined"!=typeof Symbol&&[][Symbol.iterator])||e===[]["@@iterator"]))return r;if(null!=e){var l,n,i,a,u=[],o=!0,f=!1;try{if(i=(e=e.call(r)).next,0===t){if(Object(e)!==e)return;o=!1}else for(;!(o=(l=i.call(e)).done)&&(u.push(l.value),u.length!==t);o=!0);}catch(r){f=!0,n=r}finally{try{if(!o&&null!=e.return&&(a=e.return(),Object(a)!==a))return}finally{if(f)throw n}}return u}}function cli_createForOfIteratorHelper(e,t){var _n="undefined"!=typeof Symbol&&e[Symbol.iterator]||e["@@iterator"];if(!_n){if(Array.isArray(e)||(_n=cli_unsupportedIterableToArray(e))||t&&e&&"number"==typeof e.length){_n&&(e=_n);var o=0,F=function F(){};return{s:F,n:function n(){return o>=e.length?{done:!0}:{done:!1,value:e[o++]}},e:function e(r){throw r},f:F}}throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}var a,u,i=!0;return{s:function s(){_n=_n.call(e)},n:function n(){i=!0;var r=_n.next();return r.done?{done:!0}:{value:r.value,done:i=!1}},e:function e(r){a=!0,u=r},f:function f(){try{i||null==_n.return||_n.return()}finally{if(a)throw u}}}}function cli_unsupportedIterableToArray(t,e){if(t){if("string"==typeof t)return cli_arrayLikeToArray(t,e);var o={}.toString.call(t).slice(8,-1);return"Object"===o&&t.constructor&&(o=t.constructor.name),"Map"===o||"Set"===o?Array.from(t):"Arguments"===o||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o)?cli_arrayLikeToArray(t,e):void 0}}function cli_arrayLikeToArray(r,a){(null==a||a>r.length)&&(a=r.length);for(var e=0,n=Array(a);e<a;e++)n[e]=r[e];return n}function cli_defineProperties(r,t){for(var o=0;o<t.length;o++){var i=t[o];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(r,cli_toPropertyKey(i.key),i)}}function cli_createClass(e,r,t){return r&&cli_defineProperties(e.prototype,r),t&&cli_defineProperties(e,t),Object.defineProperty(e,"prototype",{writable:!1}),e}function cli_classCallCheck(a,n){if(!(a instanceof n))throw new TypeError("Cannot call a class as a function")}function cli_inherits(t,r){if("function"!=typeof r&&null!==r)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(r&&r.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),Object.defineProperty(t,"prototype",{writable:!1}),r&&cli_setPrototypeOf(t,r)}function cli_callSuper(e,c,p){return c=cli_getPrototypeOf(c),cli_possibleConstructorReturn(e,cli_isNativeReflectConstruct()?Reflect.construct(c,p||[],cli_getPrototypeOf(e).constructor):c.apply(e,p))}function cli_possibleConstructorReturn(t,e){if(e&&("object"==cli_typeof(e)||"function"==typeof e))return e;if(void 0!==e)throw new TypeError("Derived constructors may only return object or undefined");return cli_assertThisInitialized(t)}function cli_assertThisInitialized(e){if(void 0===e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return e}function cli_wrapNativeSuper(p){var n="function"==typeof Map?new Map:void 0;return cli_wrapNativeSuper=function _wrapNativeSuper(p){if(null===p||!cli_isNativeFunction(p))return p;if("function"!=typeof p)throw new TypeError("Super expression must either be null or a function");if(void 0!==n){if(n.has(p))return n.get(p);n.set(p,Wrapper)}function Wrapper(){return cli_construct(p,arguments,cli_getPrototypeOf(this).constructor)}return Wrapper.prototype=Object.create(p.prototype,{constructor:{value:Wrapper,enumerable:!1,writable:!0,configurable:!0}}),cli_setPrototypeOf(Wrapper,p)},cli_wrapNativeSuper(p)}function cli_construct(e,o,p){if(cli_isNativeReflectConstruct())return Reflect.construct.apply(null,arguments);var n=[null];n.push.apply(n,o);var l=new(e.bind.apply(e,n));return p&&cli_setPrototypeOf(l,p.prototype),l}function cli_isNativeReflectConstruct(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(cli_isNativeReflectConstruct=function _isNativeReflectConstruct(){return!!t})()}function cli_isNativeFunction(t){try{return-1!==Function.toString.call(t).indexOf("[native code]")}catch(n){return"function"==typeof t}}function cli_setPrototypeOf(t,e){return cli_setPrototypeOf=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},cli_setPrototypeOf(t,e)}function cli_getPrototypeOf(t){return cli_getPrototypeOf=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},cli_getPrototypeOf(t)}function cli_defineProperty(r,t,o){return(t=cli_toPropertyKey(t))in r?Object.defineProperty(r,t,{value:o,enumerable:!0,configurable:!0,writable:!0}):r[t]=o,r}function cli_toPropertyKey(r){var o=cli_toPrimitive(r,"string");return"symbol"==cli_typeof(o)?o:o+""}function cli_toPrimitive(t,e){if("object"!=cli_typeof(t)||!t)return t;var r;if("undefined"!=typeof Symbol&&void 0!==(r=t[Symbol.toPrimitive])){var i=r.call(t,e||"default");if("object"!=cli_typeof(i))return i;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}function cli_asyncIterator(r){var n,t,o,e=2;for("undefined"!=typeof Symbol&&(t=Symbol.asyncIterator,o=Symbol.iterator);e--;){if(t&&null!=(n=r[t]))return n.call(r);if(o&&null!=(n=r[o]))return new cli_AsyncFromSyncIterator(n.call(r));t="@@asyncIterator",o="@@iterator"}throw new TypeError("Object is not async iterable")}function cli_AsyncFromSyncIterator(r){function AsyncFromSyncIteratorContinuation(r){if(Object(r)!==r)return Promise.reject(new TypeError(r+" is not an object."));var n=r.done;return Promise.resolve(r.value).then(function(r){return{value:r,done:n}})}return cli_AsyncFromSyncIterator=function AsyncFromSyncIterator(r){this.s=r,this.n=r.next},cli_AsyncFromSyncIterator.prototype={s:null,n:null,next:function next(){return AsyncFromSyncIteratorContinuation(this.n.apply(this.s,arguments))},return:function _return(r){var n=this.s.return;return void 0===n?Promise.resolve({value:r,done:!0}):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))},throw:function _throw(r){var n=this.s.throw;return void 0===n?Promise.reject(r):AsyncFromSyncIteratorContinuation(n.apply(this.s,arguments))}},new cli_AsyncFromSyncIterator(r)};// endregion
 // Exit codes aligned with gocryptfs where an equivalent exists.
 var EXIT_CODES={error:1,usage:2,unsupportedVault:3,locked:4,wrongPassword:12};var USAGE="Usage: gocryptfs-standalone <command> [options]\n\nWorks with gocryptfs vaults created with \"gocryptfs -init -plaintextnames\"\nwithout FUSE.\n\nCommands:\n  init <vault>                   Create a new vault (directory must be empty).\n  info <vault>                   Show vault configuration.\n  cat <vault> <path>             Decrypt one file to standard output.\n  decrypt <vault> <target>       Decrypt the whole vault into target.\n  encrypt <source> <vault>       Encrypt the whole source into the vault.\n  sync <plaintext> <vault>       Synchronize both directions (see below).\n  sync [<pair>]                  Synchronize given or all configured pairs.\n\n  pair add <name> <plaintext> <vault>\n                                 Configure a pair (verifies the password and\n                                 stores it in the keychain by default).\n  pair remove <name>             Remove a pair (keeps its trash).\n  pair list                      Show configured pairs.\n  daemon [<pair>...]             Synchronize pairs shortly after changes and\n                                 in their intervals until stopped.\n  service install|uninstall|status\n                                 Start \"daemon\" automatically after log in\n                                 (per user, no admin rights needed).\n\nOptions:\n  --config <path>                Configuration file of the vault (default:\n                                 \"gocryptfs.conf\" or \".gocryptfs.conf\" in\n                                 the vault, \"init\" creates the former).\n  --passfile <path>              Read the password from the file's first line.\n  --extpass <command>            Read the password from a command's output.\n  --masterkey <hex>              Use the master key instead of a password.\n  --scryptn <number>             Scrypt cost as binary logarithm for \"init\"\n                                 (default ".concat(String(DEFAULT_SCRYPT_LOG_N),").\n  --exclude <pattern>            Leave out matching entries on both sides\n                                 (repeatable, see below).\n  --dry-run                      Only show what \"sync\" would do.\n  --trash-days <number>          Days to keep entries \"sync\" moved into the\n                                 trash (default ").concat(String(DEFAULT_TRASH_RETENTION_IN_DAYS),").\n  --interval <duration>          Synchronization interval of a pair, e.g.\n                                 \"30s\", \"10m\" (default) or \"2h\".\n  --no-watch                     Synchronize a pair only in its interval, not\n                                 shortly after file system changes.\n  --password <source>            Password source of a pair: \"keychain\"\n                                 (default), \"prompt\" or \"environment\".\n                                 \"--passfile\" and \"--extpass\" configure a\n                                 file or command instead.\n  -h, --help                     Show this help.\n  -v, --version                  Show the version.\n\nThe password can also be given via the environment variable\n\"GOCRYPTFS_PASSWORD\". Without any source it is asked for interactively.\n\n\"sync\" remembers the state after each run (in the user's configuration\ndirectory). Changes on one side are copied to the other side, deletions are\nmoved into a trash directory there, and changes on both sides keep both\nversions (the older one as conflict copy).\n\nExclude patterns follow gitignore conventions: without a slash they match\nnames at any depth (\"*.tmp\", \".DS_Store\"), with a slash paths relative to\nthe root (\"docs/*.pdf\", \"/build\"), a trailing slash only matches directories\n(\"cache/\"). Supported globs: \"*\", \"**\", \"?\", \"[...]\" and \"{a,b}\".\n\nPairs, their intervals, excludes and password sources are configured in\n\"configuration.json\" in the user's configuration directory (see readme).\n");var defaultOutput={error:function error(text){process.stderr.write("".concat(text,"\n"))},isTerminal:process.stderr.isTTY,log:function log(text){process.stderr.write("".concat(text,"\n"))},write:function write(data){return new Promise(function(resolve,reject){process.stdout.write(data,function(error){if(error)reject(error);else resolve()})})}};var UsageError=/*#__PURE__*/function(_Error){function UsageError(){var _this;cli_classCallCheck(this,UsageError);for(var _len=arguments.length,args=new Array(_len),_key=0;_key<_len;_key++){args[_key]=arguments[_key]}_this=cli_callSuper(this,UsageError,[].concat(args));cli_defineProperty(_this,"name","UsageError");return _this}cli_inherits(UsageError,_Error);return cli_createClass(UsageError)}(/*#__PURE__*/cli_wrapNativeSuper(Error));/**
  * Checks whether one of given paths is located inside the other one.
@@ -2568,7 +4942,7 @@ releaseLocks=[];_context6.p=83;_iterator9=cli_createForOfIteratorHelper(_pairs);
 contentKeys=new Map;_iterator0=cli_createForOfIteratorHelper(_pairs);_context6.p=92;_iterator0.s();case 93:if((_step0=_iterator0.n()).done){_context6.n=96;break}_pair5=_step0.value;_t17=contentKeys;_t18=_pair5.name;_context6.n=94;return getContentKey(_pair5.vault,_pair5);case 94:_t17.set.call(_t17,_t18,_context6.v);case 95:_context6.n=93;break;case 96:_context6.n=98;break;case 97:_context6.p=97;_t19=_context6.v;_iterator0.e(_t19);case 98:_context6.p=98;_iterator0.f();return _context6.f(98);case 99:abortController=new AbortController;stop=function stop(){abortController.abort()};signal=(_givenDependencies$si=givenDependencies.signal)!==null&&_givenDependencies$si!==void 0?_givenDependencies$si:abortController.signal;if(!givenDependencies.signal){_iterator1=cli_createForOfIteratorHelper(["SIGINT","SIGTERM"]);try{for(_iterator1.s();!(_step1=_iterator1.n()).done;){_name3=_step1.value;process.once(_name3,stop)}}catch(err){_iterator1.e(err)}finally{_iterator1.f()}}log=function log(text){output.log("".concat((new Date).toISOString()," ").concat(text))};_context6.p=100;_context6.n=101;return runDaemon({isSynchronized:function isSynchronized(pair,changes){return synchronize_isSynchronized({plainPath:pair.plaintext,vaultPath:pair.vault},changes)},log:log,pairs:_pairs,signal:signal,watchPair:(_givenDependencies$wa=givenDependencies.watchPair)!==null&&_givenDependencies$wa!==void 0?_givenDependencies$wa:watchPair,synchronizePair:function(){var _synchronizePair3=cli_asyncToGenerator(/*#__PURE__*/cli_regenerator().m(function _callee5(pair){var result;return cli_regenerator().w(function(_context5){while(1)switch(_context5.n){case 0:_context5.n=1;return _synchronizePair2(pair,contentKeys.get(pair.name),function(text){log("\"".concat(pair.name,"\": ").concat(text))});case 1:result=_context5.v;return _context5.a(2,result.changes>0||result.failed?result.summary:null)}},_callee5)}));function synchronizePair(_x11){return _synchronizePair3.apply(this,arguments)}return synchronizePair}()});case 101:_context6.p=101;_iterator10=cli_createForOfIteratorHelper(["SIGINT","SIGTERM"]);try{for(_iterator10.s();!(_step10=_iterator10.n()).done;){_name4=_step10.value;process.removeListener(_name4,stop)}}catch(err){_iterator10.e(err)}finally{_iterator10.f()}_iterator11=cli_createForOfIteratorHelper(contentKeys.values());try{for(_iterator11.s();!(_step11=_iterator11.n()).done;){key=_step11.value;key.fill(0)}}catch(err){_iterator11.e(err)}finally{_iterator11.f()}return _context6.f(101);case 102:return _context6.a(2,0);case 103:_context6.p=103;_i4=0,_releaseLocks=releaseLocks;case 104:if(!(_i4<_releaseLocks.length)){_context6.n=106;break}releaseLock=_releaseLocks[_i4];_context6.n=105;return releaseLock();case 105:_i4++;_context6.n=104;break;case 106:return _context6.f(103);case 107:_parameters3=cli_slicedToArray(parameters,1),_subcommand=_parameters3[0];if(!(parameters.length!==1||!["install","status","uninstall"].includes(_subcommand))){_context6.n=108;break}throw new UsageError("Command \"service\" expects: install, uninstall or status");case 108:service=(_givenDependencies$se=givenDependencies.service)!==null&&_givenDependencies$se!==void 0?_givenDependencies$se:createService();if(!(_subcommand==="install")){_context6.n=110;break}_context6.n=109;return getPairs([]);case 109:_pairs2=_context6.v;interactive=_pairs2.filter(function(_ref2){var password=_ref2.password;return password==="prompt"});if(!(interactive.length>0)){_context6.n=110;break}throw new UsageError("A service can not ask for passwords, pairs "+interactive.map(function(_ref3){var name=_ref3.name;return"\"".concat(name,"\"")}).join(", ")+" need another password source.");case 110:_t20=output;_context6.n=111;return service[_subcommand]();case 111:_t20.log.call(_t20,_context6.v);return _context6.a(2,0);case 112:throw new UsageError("Unknown command \"".concat(command,"\"."));case 113:_context6.n=119;break;case 114:_context6.p=114;_t21=_context6.v;message=_t21 instanceof Error?_t21.message:String(_t21);output.error(message);if(!(_t21 instanceof UsageError||_t21!==null&&_t21!==void 0&&(_code=_t21.code)!==null&&_code!==void 0&&_code.toString().startsWith("ERR_PARSE_ARGS"))){_context6.n=115;break}return _context6.a(2,EXIT_CODES.usage);case 115:if(!(_t21 instanceof UnsupportedVaultError)){_context6.n=116;break}return _context6.a(2,EXIT_CODES.unsupportedVault);case 116:if(!(_t21 instanceof WrongPasswordError)){_context6.n=117;break}return _context6.a(2,EXIT_CODES.wrongPassword);case 117:if(!(_t21 instanceof LockedError)){_context6.n=118;break}return _context6.a(2,EXIT_CODES.locked);case 118:return _context6.a(2,EXIT_CODES.error);case 119:return _context6.a(2)}},_callee6,null,[[100,,101,102],[92,97,98,99],[84,89,90,91],[83,,103,107],[76,80,81,82],[57,59],[45,,47,48],[41,50,51,52],[23,,24,26],[16,21,22,27],[1,114]])}));function run(_x,_x2,_x3){return _run.apply(this,arguments)}return run}();
 
 /***/ }),
-/* 21 */
+/* 16 */
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -2725,6 +5099,6 @@ exports.f = Object.getOwnPropertySymbols;
 /******/ // startup
 /******/ // Load entry module and return exports
 /******/ // This entry module used 'module' so it can't be inlined
-/******/ let __webpack_exports__ = __webpack_require__(19);
+/******/ let __webpack_exports__ = __webpack_require__(14);
 /******/ __webpack_exports__ = await __webpack_exports__;
 /******/ 
