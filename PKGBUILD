@@ -23,7 +23,7 @@ optdepends=(
 )
 # NOTE: The published package contains the bundled command line interface.
 source=("https://registry.npmjs.org/gocryptfs-standalone/-/gocryptfs-standalone-${pkgver}.tgz")
-sha256sums=('157da66f42f61c16d4fedb18cd1c5c0bb558349fbc918dfd83bbaabeedc6846c')
+sha256sums=('2f7389f252df475f814fdac0932e93cb993eb13a5f2398e121b3a017e3112b4b')
 copy_to_aur=true
 
 package() {
