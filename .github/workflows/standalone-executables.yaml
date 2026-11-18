@@ -6,9 +6,6 @@ on:
   create:
     branches:
       - main
-  push:
-    branches:
-      - main
   # Runs when a new version was prepared.
   repository_dispatch:
     types:
