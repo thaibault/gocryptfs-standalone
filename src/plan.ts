@@ -34,6 +34,7 @@ export const ACTION_ORDER: Array<Action['type']> = [
     'createDirectory',
     'conflict',
     'compare',
+    'verify',
     'transfer',
     'record',
     'forget'
@@ -51,10 +52,24 @@ export const isSameSnapshot = (
         first !== undefined &&
         second !== undefined &&
         first.type === second.type &&
+        first.ctimeMs === second.ctimeMs &&
         first.size === second.size &&
         first.mtimeMs === second.mtimeMs &&
         first.target === second.target
     )
+/**
+ * Checks whether only the change time differs. Content may be the same
+ * (permissions or extended attributes changed) or modified while the
+ * modification time has been restored.
+ * @param current - Current snapshot.
+ * @param last - Snapshot after the last synchronization.
+ * @returns Indicates a change time only change.
+ */
+export const hasOnlyChangeTimeChanged = (
+    current: Snapshot, last: Snapshot
+): boolean =>
+    current.ctimeMs !== last.ctimeMs &&
+    isSameSnapshot(current, {...last, ctimeMs: current.ctimeMs})
 /**
  * Returns the other side of a pair.
  * @param side - Given side.
@@ -183,9 +198,16 @@ export const createPlan = (
     }
     // Entry was deleted on the other side than given.
     const planDeletion = (
-        path: string, snapshot: Snapshot, side: Side, changed: boolean
+        path: string, snapshot: Snapshot, side: Side, last: Snapshot
     ) => {
-        if (changed)
+        /*
+            NOTE: Change time only changes do not count, the trash keeps
+            the version anyway.
+        */
+        if (
+            !isSameSnapshot(snapshot, last) &&
+            !hasOnlyChangeTimeChanged(snapshot, last)
+        )
             // NOTE: A modification beats a deletion, nothing gets lost.
             planCopy(path, snapshot, side)
         else
@@ -239,19 +261,9 @@ export const createPlan = (
         if (!plainSnapshot && !cipherSnapshot)
             actions.push({type: 'forget', path})
         else if (!plainSnapshot && cipherSnapshot)
-            planDeletion(
-                path,
-                cipherSnapshot,
-                'cipher',
-                !isSameSnapshot(cipherSnapshot, entry.cipher)
-            )
+            planDeletion(path, cipherSnapshot, 'cipher', entry.cipher)
         else if (plainSnapshot && !cipherSnapshot)
-            planDeletion(
-                path,
-                plainSnapshot,
-                'plain',
-                !isSameSnapshot(plainSnapshot, entry.plain)
-            )
+            planDeletion(path, plainSnapshot, 'plain', entry.plain)
         else if (plainSnapshot && cipherSnapshot) {
             const plainChanged = !isSameSnapshot(plainSnapshot, entry.plain)
             const cipherChanged = !isSameSnapshot(cipherSnapshot, entry.cipher)
@@ -259,9 +271,23 @@ export const createPlan = (
             if (plainChanged && cipherChanged)
                 planDivergence(path, plainSnapshot, cipherSnapshot)
             else if (plainChanged)
-                actions.push({type: 'transfer', path, from: 'plain'})
+                actions.push({
+                    type: hasOnlyChangeTimeChanged(plainSnapshot, entry.plain) ?
+                        'verify' :
+                        'transfer',
+                    path,
+                    from: 'plain'
+                })
             else if (cipherChanged)
-                actions.push({type: 'transfer', path, from: 'cipher'})
+                actions.push({
+                    type: hasOnlyChangeTimeChanged(
+                        cipherSnapshot, entry.cipher
+                    ) ?
+                        'verify' :
+                        'transfer',
+                    path,
+                    from: 'cipher'
+                })
         }
     }
 

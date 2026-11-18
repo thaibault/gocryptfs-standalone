@@ -15,6 +15,7 @@
 */
 // region imports
 import {
+    chmod,
     lstat,
     mkdir,
     mkdtemp,
@@ -187,6 +188,30 @@ describe('synchronize', () => {
         // Vault files stay encrypted in the trash.
         expect(await exists(join(trash, 'vault/a.txt'))).toStrictEqual(true)
 
+        expect(await sync()).toStrictEqual([])
+    })
+    test('change time only changes are verified by content', async () => {
+        await writePlain('a.txt', 'abc')
+        await sync()
+
+        await chmod(join(plain, 'a.txt'), 0o600)
+
+        expect(await sync()).toStrictEqual([])
+        expect(await readCipher('a.txt')).toStrictEqual('abc')
+    })
+    test('same sized edits keeping their mtime are transferred', async () => {
+        await writePlain('a.txt', 'abc')
+        await sync()
+
+        const path = join(plain, 'a.txt')
+        const {atimeMs, mtimeMs} = await lstat(path)
+        await writeFile(path, 'xyz')
+        await utimes(path, atimeMs / 1000, mtimeMs / 1000)
+        expect((await lstat(path)).mtimeMs).toStrictEqual(mtimeMs)
+
+        expect(await sync())
+            .toStrictEqual([{type: 'transfer', path: 'a.txt', from: 'plain'}])
+        expect(await readCipher('a.txt')).toStrictEqual('xyz')
         expect(await sync()).toStrictEqual([])
     })
     test('changes on both sides keep both versions', async () => {

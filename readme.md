@@ -252,6 +252,9 @@ elsewhere). Compared to that state:
   moved into the trash.<!--deDE:Auf einer Seite gelöscht und auf der anderen unverändert: Die andere Version wird in den Papierkorb verschoben.--><!--frFR:Supprimé d'un côté et inchangé de l'autre: l'autre version est déplacée dans la corbeille.-->
 - Deleted on one side and changed on the other: the change wins and is
   copied again.<!--deDE:Auf einer Seite gelöscht und auf der anderen geändert: Die Änderung gewinnt und wird erneut kopiert.--><!--frFR:Supprimé d'un côté et modifié de l'autre: la modification l'emporte et est recopiée.-->
+- Only the change time changed (permissions, extended attributes or an edit
+  keeping its modification time): both versions are compared by content and
+  only transferred if they differ.<!--deDE:Nur der Änderungszeitpunkt (ctime) hat sich geändert (Berechtigungen, erweiterte Attribute oder eine Änderung, die ihren Modifikationszeitpunkt beibehält): Beide Versionen werden inhaltlich verglichen und nur bei Unterschieden übertragen.--><!--frFR:Seule la date de changement (ctime) a changé (permissions, attributs étendus ou une modification conservant sa date de modification): les deux versions sont comparées par contenu et transférées uniquement si elles diffèrent.-->
 - Changed on both sides: the newer version wins, the older one is kept as
   "name (conflict &lt;host&gt; &lt;date&gt;).ext" on both sides.<!--deDE:Auf beiden Seiten geändert: Die neuere Version gewinnt, die ältere bleibt auf beiden Seiten als "name (conflict &lt;host&gt; &lt;date&gt;).ext" erhalten.--><!--frFR:Modifié des deux côtés: la version la plus récente l'emporte, l'ancienne est conservée des deux côtés sous "name (conflict &lt;host&gt; &lt;date&gt;).ext".-->
 

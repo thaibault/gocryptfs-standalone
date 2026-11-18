@@ -93,16 +93,22 @@ export const getSnapshot = async (
 
     // NOTE: Directory meta data changes with its content, so it is ignored.
     if (stats.isDirectory())
-        return {mtimeMs: 0, size: 0, type: 'directory'}
+        return {ctimeMs: 0, mtimeMs: 0, size: 0, type: 'directory'}
     if (stats.isSymbolicLink())
         return {
+            ctimeMs: 0,
             mtimeMs: 0,
             size: 0,
             target: await readlink(path),
             type: 'symbolicLink'
         }
     if (stats.isFile())
-        return {mtimeMs: stats.mtimeMs, size: stats.size, type: 'file'}
+        return {
+            ctimeMs: stats.ctimeMs,
+            mtimeMs: stats.mtimeMs,
+            size: stats.size,
+            type: 'file'
+        }
 
     return undefined
 }
@@ -402,17 +408,21 @@ export const synchronize = async (
 
             await assertUnchanged(loser, path, loserSnapshot)
             await rename(getPath(loser, path), getPath(loser, conflictPath))
+            // NOTE: Renaming changes the change time.
+            const conflictSnapshot =
+                await getSnapshot(getPath(loser, conflictPath))
             // Winner replaces the loser's version on the loser side.
             await transfer(
                 path, winner, snapshots[winner].get(path), undefined
             )
             // The loser's version is kept as conflict copy on both sides.
-            await transfer(conflictPath, loser, loserSnapshot, undefined)
+            await transfer(conflictPath, loser, conflictSnapshot, undefined)
         }
 
         const apply = async (action: Action) => {
             switch (action.type) {
             case 'transfer':
+            case 'verify':
                 await transfer(
                     action.path,
                     action.from,
@@ -480,16 +490,19 @@ export const synchronize = async (
             try {
                 /*
                     NOTE: Comparisons are reported once decided, so equal
-                    copies stay silent and only written conflicts show up.
+                    copies stay silent and only written conflicts or
+                    transfers show up.
                 */
-                if (action.type === 'compare')
+                if (action.type === 'compare' || action.type === 'verify')
                     action = actions[index] = await hasSameContent(
                         key,
                         getPath('plain', action.path),
                         getPath('cipher', action.path)
                     ) ?
                         {type: 'record', path: action.path} :
-                        {...action, type: 'conflict'}
+                        action.type === 'compare' ?
+                            {...action, type: 'conflict'} :
+                            {...action, type: 'transfer'}
 
                 onAction(action)
                 if (action.type === 'skip')

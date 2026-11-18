@@ -84,6 +84,11 @@ export interface Change {
  * the cipher side the size is the encrypted size.
  */
 export interface Snapshot {
+    /*
+        NOTE: Changes with every content or meta data modification and can
+        not be set back (unlike the modification time).
+    */
+    ctimeMs: number
     mtimeMs: number
     size: number
     target?: string
@@ -120,6 +125,8 @@ export type Action =
     {type: 'conflict', path: string} & ConflictResolution |
     // Both sides changed, needs a content comparison to decide.
     {type: 'compare', path: string} & ConflictResolution |
+    // Only the change time changed on given side, transfer if content differs.
+    {type: 'verify', path: string, from: Side} |
     // Both sides are in sync, only the state needs to be updated.
     {type: 'record', path: string} |
     // Gone on both sides, only the state needs to be updated.

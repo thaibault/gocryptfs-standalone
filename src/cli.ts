@@ -271,6 +271,9 @@ export const describeAction = (action: Action): null | string => {
     case 'transfer':
         return `${action.from === 'plain' ? 'encrypt' : 'decrypt'} ` +
             action.path
+    case 'verify':
+        return `verify ${action.path} (on difference: ` +
+            `${action.from === 'plain' ? 'encrypt' : 'decrypt'})`
     case 'createDirectory':
         return `create directory in ${sideName(action.side)} ${action.path}`
     case 'trash':

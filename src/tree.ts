@@ -70,7 +70,8 @@ export const transformFile = async (
         const currentSourceStats = await lstat(sourcePath)
         if (
             currentSourceStats.size !== sourceStats.size ||
-            currentSourceStats.mtimeMs !== sourceStats.mtimeMs
+            currentSourceStats.mtimeMs !== sourceStats.mtimeMs ||
+            currentSourceStats.ctimeMs !== sourceStats.ctimeMs
         )
             throw new Error(
                 'File changed while being processed, it will be retried.'

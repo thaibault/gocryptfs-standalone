@@ -23,14 +23,15 @@ import type {Action, Snapshot, StateEntry} from '../type'
 const DATE = new Date(2026, 10, 7, 13, 4, 5)
 const HOST = 'host'
 
-const file = (size: number, mtimeMs: number): Snapshot =>
-    ({mtimeMs, size, type: 'file'})
+const file = (size: number, mtimeMs: number, ctimeMs = mtimeMs): Snapshot =>
+    ({ctimeMs, mtimeMs, size, type: 'file'})
 // Cipher counterpart of a plain file snapshot.
 const encrypted = (snapshot: Snapshot): Snapshot =>
     ({...snapshot, size: getCipherSize(snapshot.size)})
-const directory: Snapshot = {mtimeMs: 0, size: 0, type: 'directory'}
+const directory: Snapshot =
+    {ctimeMs: 0, mtimeMs: 0, size: 0, type: 'directory'}
 const link = (target: string): Snapshot =>
-    ({mtimeMs: 0, size: 0, target, type: 'symbolicLink'})
+    ({ctimeMs: 0, mtimeMs: 0, size: 0, target, type: 'symbolicLink'})
 
 const synced = (snapshot: Snapshot): StateEntry => ({
     cipher: snapshot.type === 'file' ? encrypted(snapshot) : snapshot,
@@ -180,6 +181,25 @@ describe('plan', () => {
                 {'a.txt': file(10, 500)},
                 {'a.txt': encrypted(OLD)},
                 [{type: 'transfer', path: 'a.txt', from: 'plain'}]
+            ],
+            [
+                'only change time changed in plaintext directory',
+                {'a.txt': file(10, 1000, 1500)},
+                {'a.txt': encrypted(OLD)},
+                [{type: 'verify', path: 'a.txt', from: 'plain'}]
+            ],
+            [
+                'only change time changed in vault',
+                {'a.txt': OLD},
+                {'a.txt': encrypted(file(10, 1000, 1500))},
+                [{type: 'verify', path: 'a.txt', from: 'cipher'}]
+            ],
+            [
+                'deleted in vault, only change time changed in plaintext ' +
+                'directory',
+                {'a.txt': file(10, 1000, 1500)},
+                {},
+                [{type: 'trash', path: 'a.txt', side: 'plain'}]
             ],
             [
                 'deleted in plaintext directory',
