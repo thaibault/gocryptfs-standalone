@@ -17,8 +17,8 @@
     endregion
 */
 // region imports
-import {readFile, rm} from 'fs/promises'
-import {join, resolve} from 'path'
+import {mkdir, open, readFile, rm} from 'fs/promises'
+import {dirname, join, resolve} from 'path'
 import type {Readable} from 'stream'
 import {parseArgs} from 'util'
 
@@ -142,6 +142,8 @@ Options:
                                  initial synchronization, then continue as
                                  detached process logging to "daemon.log" in
                                  the configuration directory.
+  --log-file <path>              Log file of "--run-in-background" instead
+                                 of "daemon.log".
   --password <source>            Where "sync", "daemon" and the service get
                                  the password of a pair from later:
                                  "keychain" (default, "pair add" asks for it
@@ -339,6 +341,7 @@ export const run = async (
                 exclude: {multiple: true, type: 'string'},
                 'trash-days': {type: 'string'},
                 interval: {type: 'string'},
+                'log-file': {type: 'string'},
                 password: {type: 'string'},
                 version: {short: 'v', type: 'boolean'},
                 watch: {type: 'boolean'}
@@ -372,6 +375,10 @@ export const run = async (
         )
             throw new UsageError(
                 '"--run-in-background" applies to "daemon" only.'
+            )
+        if (values['log-file'] !== undefined && !values['run-in-background'])
+            throw new UsageError(
+                '"--log-file" applies to "daemon --run-in-background" only.'
             )
 
         const expectParameters = (names: Array<string>) => {
@@ -825,6 +832,25 @@ export const run = async (
                         'must not be located inside each other.'
                     )
 
+            const logPath = values['log-file'] === undefined ?
+                join(getConfigurationDirectory(), LOG_FILE_NAME) :
+                resolve(values['log-file'])
+            if (values['run-in-background']) {
+                // NOTE: Each log line would be a change to synchronize.
+                for (const pair of pairs)
+                    if ([pair.plaintext, pair.vault].some((path) =>
+                        logPath.startsWith(join(path, '/'))
+                    ))
+                        throw new UsageError(
+                            `Log file "${logPath}" must not be located ` +
+                            `inside the directories of pair "${pair.name}".`
+                        )
+
+                // Fails before asking for passwords and synchronizing.
+                await mkdir(dirname(logPath), {recursive: true})
+                await (await open(logPath, 'a')).close()
+            }
+
             // NOTE: Taken before asking for passwords, a second daemon stops.
             const releaseLocks: Array<() => Promise<void>> = []
             try {
@@ -876,8 +902,6 @@ export const run = async (
                         for (const releaseLock of releaseLocks.splice(0))
                             await releaseLock()
 
-                        const logPath =
-                            join(getConfigurationDirectory(), LOG_FILE_NAME)
                         const trashDays = values['trash-days']
                         const pid = await (
                             givenDependencies.startInBackground ??

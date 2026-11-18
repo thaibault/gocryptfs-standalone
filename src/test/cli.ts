@@ -496,6 +496,38 @@ describe('cli', () => {
             expect((await runWithPairs(['sync', '--run-in-background'])).code)
                 .toStrictEqual(EXIT_CODES.usage)
 
+            // Logs go to a given file instead.
+            const logFile = join(temporaryDirectory, 'logs', 'background.log')
+            const customLog = await runWithPairs([
+                'daemon', '--run-in-background', '--log-file', logFile
+            ])
+            expect(customLog.code).toStrictEqual(0)
+            expect(backgroundStarts.at(-1)?.logPath).toStrictEqual(logFile)
+            expect(customLog.logs.at(-1)).toContain(`logging to "${logFile}"`)
+            expect(existsSync(logFile)).toStrictEqual(true)
+
+            expect((await runWithPairs(['daemon', '--log-file', logFile]))
+                .errors).toStrictEqual([
+                '"--log-file" applies to "daemon --run-in-background" only.'
+            ])
+            // Writing into a watched directory would never settle down.
+            const watchedLog = await runWithPairs([
+                'daemon', '--run-in-background',
+                '--log-file', join(plain, 'daemon.log')
+            ])
+            expect(watchedLog.code).toStrictEqual(EXIT_CODES.usage)
+            expect(watchedLog.errors).toStrictEqual([
+                `Log file "${join(plain, 'daemon.log')}" must not be located ` +
+                'inside the directories of pair "docs".'
+            ])
+            expect(existsSync(join(plain, 'daemon.log'))).toStrictEqual(false)
+            // Unwritable log files fail before synchronizing.
+            const unwritableLog = await runWithPairs([
+                'daemon', '--run-in-background', '--log-file', temporaryDirectory
+            ])
+            expect(unwritableLog.code).toStrictEqual(EXIT_CODES.error)
+            expect(unwritableLog.logs).toStrictEqual([])
+
             expect((await runWithPairs(['service', 'install'])).code)
                 .toStrictEqual(0)
             expect((await runWithPairs(['service', 'unknown'])).code)

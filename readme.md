@@ -347,6 +347,7 @@ gocryptfs-standalone sync documents        # one pair
 gocryptfs-standalone sync                  # all pairs
 gocryptfs-standalone daemon                # all pairs on changes and in their intervals
 gocryptfs-standalone daemon --run-in-background  # sync once, then continue detached
+gocryptfs-standalone daemon --run-in-background --log-file ~/sync.log
 gocryptfs-standalone stop                  # stop daemons of all pairs (or given ones)
 gocryptfs-standalone service install       # start "daemon" after each log in
 gocryptfs-standalone service status
@@ -502,9 +503,11 @@ once in the foreground. Afterwards the daemon continues as a detached process
 logging to "daemon.log" in the configuration folder, the command returns
 (exit code 1 if the initial synchronization had failures, the daemon runs
 anyway). Unlocked keys are handed over via a pipe, never via arguments or
-environment variables. The process id is shown on start and stored in
-"daemon.lock" of each pair. Useful for log in scripts or terminals without a
-service.
+environment variables. "--log-file &lt;path&gt;" logs into another file
+(appended, missing folders are created); it must not be located inside a
+watched plaintext folder or vault. The process id is shown on start and stored
+in "daemon.lock" of each pair. Useful for log in scripts or terminals without
+a service.
 
 "stop" ends the daemons watching given or all configured pairs and waits until
 they finished a running synchronization (at most a minute). A daemon watching
@@ -520,9 +523,11 @@ synchronization.
     Konfigurationsordner, der Befehl kehrt zurück (Exit-Code 1, wenn die
     erste Synchronisation Fehler hatte, der Daemon läuft trotzdem). Die
     entsperrten Schlüssel werden über eine Pipe übergeben, nie über
-    Argumente oder Umgebungsvariablen. Die Prozess-ID wird beim Start
-    angezeigt und in "daemon.lock" jedes Paares abgelegt. Nützlich für
-    Anmeldeskripte oder Terminals ohne Dienst.
+    Argumente oder Umgebungsvariablen. "--log-file &lt;path&gt;" protokolliert
+    in eine andere Datei (angehängt, fehlende Ordner werden angelegt); sie
+    darf nicht in einem überwachten Klartextordner oder Tresor liegen. Die
+    Prozess-ID wird beim Start angezeigt und in "daemon.lock" jedes Paares
+    abgelegt. Nützlich für Anmeldeskripte oder Terminals ohne Dienst.
 
     "stop" beendet die Daemons der angegebenen oder aller eingerichteten
     Paare und wartet, bis sie einen laufenden Abgleich abgeschlossen haben
@@ -542,7 +547,10 @@ synchronization.
     Les clés déverrouillées sont transmises par un tube, jamais par des
     arguments ou des variables d'environnement. L'identifiant du processus
     est affiché au démarrage et stocké dans "daemon.lock" de chaque paire.
-    Utile pour des scripts de connexion ou des terminaux sans service.
+    "--log-file &lt;path&gt;" journalise dans un autre fichier (en ajout, les
+    dossiers manquants sont créés); il ne doit pas se trouver dans un dossier
+    en clair ou un coffre surveillé. Utile pour des scripts de connexion ou
+    des terminaux sans service.
 
     "stop" arrête les démons surveillant les paires indiquées ou toutes les
     paires configurées et attend qu'ils aient terminé une synchronisation en
