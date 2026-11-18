@@ -704,8 +704,9 @@ export const run = async (
                 const [name, vaultPath, plaintextPath] = pairParameters
                 if (!PAIR_NAME_PATTERN.test(name))
                     throw new UsageError(
-                        `Invalid pair name "${name}" (letters, digits, ` +
-                        '".", "_" and "-" only).'
+                        `Invalid pair name "${name}" (names need to start ` +
+                        'with letters or digits and proceed with letters, ' +
+                        'digits, ".", "_" and "-" only).'
                     )
                 if (Object.prototype.hasOwnProperty.call(settings.pairs, name))
                     throw new UsageError(`Pair "${name}" already exists.`)
