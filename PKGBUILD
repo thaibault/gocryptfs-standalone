@@ -11,7 +11,7 @@
 # See https://creativecommons.org/licenses/by/4.0/deed.de
 # endregion
 pkgname=gocryptfs-standalone
-pkgver=0.0.6
+pkgver=0.0.7
 pkgrel=1
 pkgdesc='Synchronizes a gocryptfs (plaintext names) encrypted directory with a decrypted copy without needing FUSE or admin rights.'
 arch=(any)
