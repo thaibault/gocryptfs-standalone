@@ -29,7 +29,7 @@
 // region imports
 import {spawn, spawnSync} from 'child_process'
 import {randomBytes} from 'crypto'
-import {existsSync} from 'fs'
+import {existsSync, readFileSync} from 'fs'
 import {
     mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile
 } from 'fs/promises'
@@ -335,8 +335,32 @@ const test = async (executable: string): Promise<void> => {
             )
                 throw new Error('Watched change has unexpected content.')
         } finally {
+            const exited = new Promise((resolve) => daemon.once('exit', resolve))
             daemon.kill()
+            await exited
         }
+
+        step('daemon in the background and stop')
+        run(['daemon', '--run-in-background'])
+        const logPath = path('configuration', 'daemon.log')
+        const readLog = () =>
+            existsSync(logPath) ?
+                readFileSync(logPath, {encoding: 'utf-8'}) :
+                ''
+        await waitFor(
+            () => readLog().includes('and on changes'),
+            `the background daemon to start, got: ${readLog()}`
+        )
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        await writeFile(join(plain, 'background.txt'), 'background\n')
+        await waitFor(
+            () => existsSync(path('vault', 'background.txt')),
+            `the background daemon to encrypt, got: ${readLog()}`
+        )
+        if (!run(['stop']).stderr.includes('Stopped daemon'))
+            throw new Error('Background daemon was not stopped.')
+        if (!run(['stop']).stderr.includes('is not watched by a daemon'))
+            throw new Error('Background daemon is still running.')
         run(['pair', 'remove', 'smoke'])
 
         console.log(`All checks of "${executable}" passed.`)

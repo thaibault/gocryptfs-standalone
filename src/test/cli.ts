@@ -18,14 +18,18 @@ import {existsSync} from 'fs'
 import {mkdir, mkdtemp, readFile, rm, writeFile} from 'fs/promises'
 import {tmpdir} from 'os'
 import {join} from 'path'
+import {Readable} from 'stream'
 
 import {afterAll, beforeAll, describe, expect, test} from '@jest/globals'
 
-import type {Output} from '../cli'
+import type {BackgroundOptions} from '../background'
+import {BackgroundStartError, READY_SIGNAL} from '../background'
+import type {Dependencies, Output} from '../cli'
 import {EXIT_CODES, findOverlappingPairs, isNested, run} from '../cli'
 import {initializeVault} from '../configuration'
 import type {Keychain} from '../keychain'
 import type {Service} from '../service'
+import type {ProcessControl} from '../stop'
 import {loadSettings, saveSettings} from '../settings'
 import {DAEMON_LOCK_FILE_NAME, getPairDirectory} from '../state'
 import {
@@ -308,11 +312,31 @@ describe('cli', () => {
             uninstall: () =>
                 Promise.resolve(String(serviceCalls.push('uninstall')))
         }
-        const runWithPairs = (argv: Array<string>, signal?: AbortSignal) => {
+        const backgroundStarts: Array<BackgroundOptions> = []
+        const runWithPairs = (
+            argv: Array<string>,
+            signal?: AbortSignal,
+            dependencies: Partial<Dependencies> = {}
+        ) => {
             const {output, result} = createOutput()
 
-            return run(argv, output, {keychain, service, signal})
-                .then((code) => ({code, ...result}))
+            return run(argv, output, {
+                keychain,
+                service,
+                signal,
+                startInBackground: (options) => {
+                    // NOTE: Keys get wiped after the hand over.
+                    backgroundStarts.push({
+                        ...options,
+                        contentKeys: new Map([...options.contentKeys].map(
+                            ([name, key]) => [name, Buffer.from(key)]
+                        ))
+                    })
+
+                    return Promise.resolve(4242)
+                },
+                ...dependencies
+            }).then((code) => ({code, ...result}))
         }
 
         let vault = ''
@@ -395,6 +419,82 @@ describe('cli', () => {
             expect(existsSync(join(
                 getPairDirectory(plain, vault), DAEMON_LOCK_FILE_NAME
             ))).toStrictEqual(false)
+
+            // Synchronizes in the foreground, then continues detached.
+            await writeFile(join(plain, 'c.txt'), 'c')
+            const foreground = await runWithPairs([
+                'daemon', 'docs', '--run-in-background', '--no-watch',
+                '--exclude', '*.log'
+            ])
+            expect(foreground.code).toStrictEqual(0)
+            expect(foreground.logs).toStrictEqual([
+                '"docs": encrypt c.txt',
+                '"docs": Applied 1 changes.',
+                'Daemon continues in the background (process 4242), ' +
+                `logging to "${join(
+                    temporaryDirectory, 'configuration', 'daemon.log'
+                )}".`
+            ])
+            expect(backgroundStarts).toHaveLength(1)
+            const [backgroundStart] = backgroundStarts
+            expect(backgroundStart.argv).toStrictEqual([
+                'daemon', 'docs', '--exclude', '*.log', '--no-watch',
+                '--background-child'
+            ])
+            expect([...backgroundStart.contentKeys.keys()])
+                .toStrictEqual(['docs'])
+            // The detached copy takes over the lock.
+            expect(existsSync(join(
+                getPairDirectory(plain, vault), DAEMON_LOCK_FILE_NAME
+            ))).toStrictEqual(false)
+
+            // The detached copy uses the handed over key.
+            const childController = new AbortController()
+            await writeFile(join(plain, 'd.txt'), 'd')
+            setTimeout(() => {
+                childController.abort()
+            }, 200)
+            const {output: childOutput, result: child} = createOutput()
+            expect(await run(
+                backgroundStart.argv,
+                childOutput,
+                {
+                    input: Readable.from([JSON.stringify({
+                        docs: (backgroundStart.contentKeys.get('docs') as
+                            Buffer).toString('hex')
+                    })]),
+                    keychain: {...keychain, load: () => {
+                        throw new Error('Not to be asked.')
+                    }},
+                    service,
+                    signal: childController.signal
+                }
+            )).toStrictEqual(0)
+            expect(Buffer.concat(child.written).toString())
+                .toStrictEqual(READY_SIGNAL)
+            expect(child.logs.map((line) => line.replace(/^\S+ /, '')))
+                .toStrictEqual([
+                    'Started synchronizing "docs" every 3600s.',
+                    '"docs": encrypt d.txt',
+                    '"docs": Applied 1 changes.',
+                    'Stopped.'
+                ])
+
+            // Failing detached copies report their error.
+            const failedStart = await runWithPairs(
+                ['daemon', '--run-in-background'],
+                undefined,
+                {
+                    startInBackground: () => Promise.reject(
+                        new BackgroundStartError('Broken.', EXIT_CODES.locked)
+                    )
+                }
+            )
+            expect(failedStart.code).toStrictEqual(EXIT_CODES.locked)
+            expect(failedStart.errors).toStrictEqual(['Broken.'])
+
+            expect((await runWithPairs(['sync', '--run-in-background'])).code)
+                .toStrictEqual(EXIT_CODES.usage)
 
             expect((await runWithPairs(['service', 'install'])).code)
                 .toStrictEqual(0)
@@ -487,6 +587,91 @@ describe('cli', () => {
 
             await runWithPairs(['pair', 'remove', 'first'])
             delete process.env.GOCRYPTFS_PASSWORD
+        })
+        test('stop', async () => {
+            const otherVault = join(temporaryDirectory, 'stop-vault')
+            const otherPlain = join(temporaryDirectory, 'stop-plain')
+            for (const [name, pairVault, pairPlain] of [
+                ['first', vault, plain],
+                ['second', otherVault, otherPlain],
+                ['third', join(temporaryDirectory, 'stop-third-vault'),
+                    join(temporaryDirectory, 'stop-third-plain')]
+            ]) {
+                if (name !== 'first')
+                    await initializeVault(pairVault, Buffer.from('secret'), 10)
+                process.env.GOCRYPTFS_PASSWORD = 'secret'
+                expect((await runWithPairs([
+                    'pair', 'add', name, pairVault, pairPlain,
+                    '--password', 'environment'
+                ])).code).toStrictEqual(0)
+            }
+            delete process.env.GOCRYPTFS_PASSWORD
+            const getLockPath = (pairVault: string, pairPlain: string) =>
+                join(getPairDirectory(pairPlain, pairVault), DAEMON_LOCK_FILE_NAME)
+            const thirdLock = getLockPath(
+                join(temporaryDirectory, 'stop-third-vault'),
+                join(temporaryDirectory, 'stop-third-plain')
+            )
+
+            // Process 100 watches "first" and "second", 200 crashed.
+            const running = new Set([100, 300])
+            const terminated: Array<number> = []
+            const processControl: ProcessControl = {
+                getCommandLine: (pid) => Promise.resolve(pid === 100 ?
+                    'node /usr/bin/gocryptfs-standalone daemon' :
+                    '/usr/bin/vim'
+                ),
+                isRunning: (pid) => running.has(pid),
+                terminate: (pid) => {
+                    terminated.push(pid)
+                    running.delete(pid)
+                }
+            }
+            for (const [path, pid] of [
+                [getLockPath(vault, plain), '100'],
+                [getLockPath(otherVault, otherPlain), '100'],
+                [thirdLock, '200']
+            ]) {
+                await mkdir(join(path, '..'), {recursive: true})
+                await writeFile(path, pid)
+            }
+
+            const stop = await runWithPairs(
+                ['stop', 'second', 'third'], undefined, {processControl}
+            )
+            expect(stop.code).toStrictEqual(0)
+            expect(stop.logs).toStrictEqual([
+                'Pair "third" is not watched by a daemon.',
+                'Stopped daemon (process 100) of "first", "second".'
+            ])
+            expect(terminated).toStrictEqual([100])
+            for (const path of [
+                getLockPath(vault, plain),
+                getLockPath(otherVault, otherPlain),
+                thirdLock
+            ])
+                expect(existsSync(path)).toStrictEqual(false)
+
+            // Reused process ids of foreign processes are never stopped.
+            await writeFile(thirdLock, '300')
+            const refused =
+                await runWithPairs(['stop'], undefined, {processControl})
+            expect(refused.code).toStrictEqual(EXIT_CODES.error)
+            expect(refused.logs).toStrictEqual([
+                'Pair "first" is not watched by a daemon.',
+                'Pair "second" is not watched by a daemon.'
+            ])
+            expect(refused.errors).toStrictEqual([
+                'Process 300 holding the daemon lock of "third" could not ' +
+                'be identified as daemon of this application, stop it ' +
+                'yourself if it is one.'
+            ])
+            expect(terminated).toStrictEqual([100])
+            expect(existsSync(thirdLock)).toStrictEqual(true)
+            await rm(thirdLock)
+
+            for (const name of ['first', 'second', 'third'])
+                await runWithPairs(['pair', 'remove', name])
         })
         test('service refuses pairs needing interactive passwords', async () => {
             expect((await runWithPairs([

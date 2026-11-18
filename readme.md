@@ -346,6 +346,8 @@ gocryptfs-standalone pair list
 gocryptfs-standalone sync documents        # one pair
 gocryptfs-standalone sync                  # all pairs
 gocryptfs-standalone daemon                # all pairs on changes and in their intervals
+gocryptfs-standalone daemon --run-in-background  # sync once, then continue detached
+gocryptfs-standalone stop                  # stop daemons of all pairs (or given ones)
 gocryptfs-standalone service install       # start "daemon" after each log in
 gocryptfs-standalone service status
 gocryptfs-standalone service uninstall
@@ -493,6 +495,64 @@ watching for "pair add" or a single "daemon" run.
     atteinte), la paire n'est synchronisée qu'à son intervalle et la
     surveillance est retentée toutes les 5 minutes. "--no-watch" désactive
     la surveillance pour "pair add" ou une seule exécution de "daemon".
+-->
+
+"--run-in-background" asks for missing passwords and synchronizes all pairs
+once in the foreground. Afterwards the daemon continues as a detached process
+logging to "daemon.log" in the configuration folder, the command returns
+(exit code 1 if the initial synchronization had failures, the daemon runs
+anyway). Unlocked keys are handed over via a pipe, never via arguments or
+environment variables. The process id is shown on start and stored in
+"daemon.lock" of each pair. Useful for log in scripts or terminals without a
+service.
+
+"stop" ends the daemons watching given or all configured pairs and waits until
+they finished a running synchronization (at most a minute). A daemon watching
+further pairs stops for those as well, including one started by the service
+(until the next log in). Only processes identified as daemon of this
+application get stopped, so a process id reused after a crash is never hit.
+On Windows daemons end immediately, without finishing a running
+synchronization.
+<!--deDE:
+    "--run-in-background" fragt fehlende Passwörter ab und synchronisiert
+    alle Paare einmal im Vordergrund. Danach läuft der Daemon als
+    abgekoppelter Prozess weiter und protokolliert nach "daemon.log" im
+    Konfigurationsordner, der Befehl kehrt zurück (Exit-Code 1, wenn die
+    erste Synchronisation Fehler hatte, der Daemon läuft trotzdem). Die
+    entsperrten Schlüssel werden über eine Pipe übergeben, nie über
+    Argumente oder Umgebungsvariablen. Die Prozess-ID wird beim Start
+    angezeigt und in "daemon.lock" jedes Paares abgelegt. Nützlich für
+    Anmeldeskripte oder Terminals ohne Dienst.
+
+    "stop" beendet die Daemons der angegebenen oder aller eingerichteten
+    Paare und wartet, bis sie einen laufenden Abgleich abgeschlossen haben
+    (höchstens eine Minute). Ein Daemon, der weitere Paare überwacht, endet
+    auch für diese, ebenso ein vom Dienst gestarteter (bis zur nächsten
+    Anmeldung). Beendet werden nur Prozesse, die als Daemon dieser Anwendung
+    erkannt werden, eine nach einem Absturz neu vergebene Prozess-ID trifft
+    also nie einen fremden Prozess. Unter Windows enden Daemons sofort, ohne
+    einen laufenden Abgleich abzuschließen.
+-->
+<!--frFR:
+    "--run-in-background" demande les mots de passe manquants et synchronise
+    toutes les paires une fois au premier plan. Ensuite le démon continue en
+    tant que processus détaché, journalisant dans "daemon.log" du dossier de
+    configuration, et la commande se termine (code de sortie 1 si la
+    synchronisation initiale a eu des erreurs, le démon tourne quand même).
+    Les clés déverrouillées sont transmises par un tube, jamais par des
+    arguments ou des variables d'environnement. L'identifiant du processus
+    est affiché au démarrage et stocké dans "daemon.lock" de chaque paire.
+    Utile pour des scripts de connexion ou des terminaux sans service.
+
+    "stop" arrête les démons surveillant les paires indiquées ou toutes les
+    paires configurées et attend qu'ils aient terminé une synchronisation en
+    cours (une minute au plus). Un démon surveillant d'autres paires s'arrête
+    aussi pour celles-ci, y compris celui lancé par le service (jusqu'à la
+    prochaine connexion). Seuls les processus identifiés comme démon de cette
+    application sont arrêtés, un identifiant de processus réattribué après un
+    plantage ne touche donc jamais un processus étranger. Sous Windows, les
+    démons s'arrêtent immédiatement, sans terminer une synchronisation en
+    cours.
 -->
 
 "service install" registers the daemon per user, without admin rights:

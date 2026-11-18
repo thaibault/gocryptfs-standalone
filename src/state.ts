@@ -166,7 +166,7 @@ export const saveState = async (
  * @param pid - Process id.
  * @returns Indicates whether the process exists.
  */
-const isRunning = (pid: number): boolean => {
+export const isRunning = (pid: number): boolean => {
     try {
         process.kill(pid, 0)
 
@@ -210,6 +210,29 @@ export const acquireLock = async (
         }
 
     throw new LockedError('Could not acquire the synchronization lock.')
+}
+/**
+ * Determines the process holding given lock of a pair.
+ * @param pairDirectory - Directory of the pair.
+ * @param fileName - Name of the lock file.
+ * @returns Process id or null if the lock is not held (the process may have
+ * stopped without releasing it).
+ */
+export const getLockHolder = async (
+    pairDirectory: string, fileName = LOCK_FILE_NAME
+): Promise<null | number> => {
+    let content: string
+    try {
+        content = await readFile(
+            join(pairDirectory, fileName), {encoding: 'utf-8'}
+        )
+    } catch {
+        return null
+    }
+
+    const pid = Number(content)
+
+    return Number.isInteger(pid) && pid > 0 ? pid : null
 }
 /**
  * Moves given path, falling back to copy and delete across file systems.

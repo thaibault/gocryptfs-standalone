@@ -17,11 +17,21 @@
     endregion
 */
 // region imports
+import {readFile, rm} from 'fs/promises'
 import {join, resolve} from 'path'
+import type {Readable} from 'stream'
 import {parseArgs} from 'util'
 
 import packageConfiguration from '../package.json'
 
+import {
+    BACKGROUND_CHILD_OPTION_NAME,
+    BackgroundStartError,
+    READY_SIGNAL,
+    receiveContentKeys,
+    startInBackground
+} from './background'
+import type {BackgroundOptions} from './background'
 import {
     DEFAULT_SCRYPT_LOG_N,
     formatMasterKey,
@@ -40,7 +50,7 @@ import {createExcludeMatcher} from './exclude'
 import {createKeychain} from './keychain'
 import type {Keychain} from './keychain'
 import {getPairPassword, getPassword} from './password'
-import {createService} from './service'
+import {createService, getProgram, LOG_FILE_NAME} from './service'
 import type {Service} from './service'
 import {
     loadSettings,
@@ -55,9 +65,13 @@ import {
     acquireLock,
     DAEMON_LOCK_FILE_NAME,
     DEFAULT_TRASH_RETENTION_IN_DAYS,
+    getConfigurationDirectory,
+    getLockHolder,
     getPairDirectory,
     LockedError
 } from './state'
+import {createProcessControl, isDaemonCommandLine, stopDaemon} from './stop'
+import type {ProcessControl} from './stop'
 import {isSynchronized, synchronize} from './synchronize'
 import {
     decryptTree, encryptTree, findSampleFile, isInternalPath
@@ -96,6 +110,10 @@ Commands:
   pair list                      Show configured pairs.
   daemon [<pair>...]             Synchronize pairs shortly after changes and
                                  in their intervals until stopped.
+                                 "--run-in-background" synchronizes once,
+                                 then continues detached.
+  stop [<pair>...]               Stop the daemons watching given or all
+                                 configured pairs.
   service install|uninstall|status
                                  Start "daemon" automatically after log in
                                  (per user, no admin rights needed).
@@ -120,6 +138,10 @@ Options:
                                  "30s", "10m" (default) or "2h".
   --no-watch                     Synchronize a pair only in its interval, not
                                  shortly after file system changes.
+  --run-in-background            Let "daemon" ask for passwords and run the
+                                 initial synchronization, then continue as
+                                 detached process logging to "daemon.log" in
+                                 the configuration directory.
   --password <source>            Where "sync", "daemon" and the service get
                                  the password of a pair from later:
                                  "keychain" (default, "pair add" asks for it
@@ -175,10 +197,16 @@ export const defaultOutput: Output = {
 }
 
 export interface Dependencies {
+    // Standard input of a daemon started in the background.
+    input: Readable
     keychain: Keychain
+    // Finds and stops daemons for "stop".
+    processControl: ProcessControl
     service: Service
     // Stops a running daemon (defaults to SIGINT and SIGTERM).
     signal?: AbortSignal
+    // Continues a daemon detached, resolves with its process id.
+    startInBackground: (options: BackgroundOptions) => Promise<number>
     watchPair: typeof watchPair
 }
 
@@ -305,6 +333,9 @@ export const run = async (
                 passfile: {type: 'string'},
                 scryptn: {type: 'string'},
                 'dry-run': {type: 'boolean'},
+                // NOTE: Internal, see "background" module.
+                [BACKGROUND_CHILD_OPTION_NAME]: {type: 'boolean'},
+                'run-in-background': {type: 'boolean'},
                 exclude: {multiple: true, type: 'string'},
                 'trash-days': {type: 'string'},
                 interval: {type: 'string'},
@@ -333,6 +364,15 @@ export const run = async (
         }
 
         const isExcluded = createExcludeMatcher(values.exclude ?? [])
+
+        const isBackgroundChild = Boolean(values[BACKGROUND_CHILD_OPTION_NAME])
+        if (
+            (values['run-in-background'] || isBackgroundChild) &&
+            command !== 'daemon'
+        )
+            throw new UsageError(
+                '"--run-in-background" applies to "daemon" only.'
+            )
 
         const expectParameters = (names: Array<string>) => {
             if (parameters.length !== names.length)
@@ -798,10 +838,80 @@ export const run = async (
 
                 // Unlock everything first so wrong passwords stop the start.
                 const contentKeys = new Map<string, Buffer>()
-                for (const pair of pairs)
-                    contentKeys.set(
-                        pair.name, await getContentKey(pair.vault, pair)
+                if (isBackgroundChild) {
+                    const handedOverKeys = await receiveContentKeys(
+                        givenDependencies.input ?? process.stdin
                     )
+                    for (const pair of pairs) {
+                        const key = handedOverKeys.get(pair.name)
+                        if (!key)
+                            throw new Error(
+                                `No key handed over for pair "${pair.name}".`
+                            )
+
+                        contentKeys.set(pair.name, key)
+                    }
+                } else
+                    for (const pair of pairs)
+                        contentKeys.set(
+                            pair.name, await getContentKey(pair.vault, pair)
+                        )
+
+                if (values['run-in-background']) {
+                    let failed = false
+                    try {
+                        for (const pair of pairs) {
+                            const result = await synchronizePair(
+                                pair,
+                                contentKeys.get(pair.name) as Buffer,
+                                (text) => {
+                                    output.log(`"${pair.name}": ${text}`)
+                                }
+                            )
+                            output.log(`"${pair.name}": ${result.summary}`)
+                            failed ||= result.failed
+                        }
+
+                        // NOTE: Released so the detached copy can take them.
+                        for (const releaseLock of releaseLocks.splice(0))
+                            await releaseLock()
+
+                        const logPath =
+                            join(getConfigurationDirectory(), LOG_FILE_NAME)
+                        const trashDays = values['trash-days']
+                        const pid = await (
+                            givenDependencies.startInBackground ??
+                            startInBackground
+                        )({
+                            argv: [
+                                'daemon',
+                                ...parameters,
+                                ...(values.exclude ?? []).flatMap((pattern) =>
+                                    ['--exclude', pattern]
+                                ),
+                                ...(trashDays === undefined ?
+                                    [] :
+                                    ['--trash-days', trashDays]),
+                                ...(values.watch === undefined ?
+                                    [] :
+                                    [values.watch ? '--watch' : '--no-watch']),
+                                `--${BACKGROUND_CHILD_OPTION_NAME}`
+                            ],
+                            contentKeys,
+                            logPath,
+                            program: getProgram()
+                        })
+                        output.log(
+                            `Daemon continues in the background (process ` +
+                            `${String(pid)}), logging to "${logPath}".`
+                        )
+                    } finally {
+                        for (const key of contentKeys.values())
+                            key.fill(0)
+                    }
+
+                    return failed ? EXIT_CODES.error : 0
+                }
 
                 const abortController = new AbortController()
                 const stop = () => {
@@ -817,6 +927,10 @@ export const run = async (
                     output.log(`${new Date().toISOString()} ${text}`)
                 }
                 try {
+                    // Lets the foreground process exit (see "background").
+                    if (isBackgroundChild)
+                        await output.write(Buffer.from(READY_SIGNAL))
+
                     await runDaemon({
                         isSynchronized: (pair, changes) => isSynchronized(
                             {plainPath: pair.plaintext, vaultPath: pair.vault},
@@ -852,6 +966,80 @@ export const run = async (
                 for (const releaseLock of releaseLocks)
                     await releaseLock()
             }
+        }
+        case 'stop': {
+            const pairs = await getPairs(parameters)
+            const control =
+                givenDependencies.processControl ?? createProcessControl()
+
+            // NOTE: One daemon may watch more pairs than given.
+            const pairsByProcess = new Map<number, Array<string>>()
+            const lockPaths = new Map<string, string>()
+            for (const pair of await getPairs([])) {
+                const pairDirectory =
+                    getPairDirectory(pair.plaintext, pair.vault)
+                lockPaths.set(
+                    pair.name, join(pairDirectory, DAEMON_LOCK_FILE_NAME)
+                )
+                const pid =
+                    await getLockHolder(pairDirectory, DAEMON_LOCK_FILE_NAME)
+                if (pid !== null && control.isRunning(pid))
+                    pairsByProcess.set(
+                        pid, [...pairsByProcess.get(pid) ?? [], pair.name]
+                    )
+            }
+            // Removes locks of stopped processes (if still held by them).
+            const removeLocks = async (pid: number) => {
+                for (const path of lockPaths.values())
+                    try {
+                        const content =
+                            await readFile(path, {encoding: 'utf-8'})
+                        if (Number(content) === pid)
+                            await rm(path, {force: true})
+                    } catch {
+                        // Already released.
+                    }
+            }
+
+            const pids: Array<number> = []
+            for (const pair of pairs) {
+                const pid = [...pairsByProcess].find(([, names]) =>
+                    names.includes(pair.name)
+                )?.[0]
+                if (pid === undefined) {
+                    output.log(
+                        `Pair "${pair.name}" is not watched by a daemon.`
+                    )
+                    // NOTE: Locks of crashed daemons are left behind.
+                    const stalePid = await getLockHolder(
+                        getPairDirectory(pair.plaintext, pair.vault),
+                        DAEMON_LOCK_FILE_NAME
+                    )
+                    if (stalePid !== null)
+                        await removeLocks(stalePid)
+                } else if (!pids.includes(pid))
+                    pids.push(pid)
+            }
+
+            for (const pid of pids) {
+                const commandLine = await control.getCommandLine(pid)
+                const names = (pairsByProcess.get(pid) as Array<string>)
+                    .map((name) => `"${name}"`).join(', ')
+                if (commandLine === null || !isDaemonCommandLine(commandLine))
+                    throw new Error(
+                        `Process ${String(pid)} holding the daemon lock of ` +
+                        `${names} could not be identified as daemon of this ` +
+                        'application, stop it yourself if it is one.'
+                    )
+
+                await stopDaemon(pid, control)
+                await removeLocks(pid)
+                output.log(
+                    `Stopped daemon (process ${String(pid)}) of ${names}.`
+                )
+            }
+
+            return 0
         }
         case 'service': {
             const [subcommand] = parameters
@@ -902,6 +1090,8 @@ export const run = async (
             return EXIT_CODES.wrongPassword
         if (error instanceof LockedError)
             return EXIT_CODES.locked
+        if (error instanceof BackgroundStartError)
+            return error.exitCode || EXIT_CODES.error
 
         return EXIT_CODES.error
     }
