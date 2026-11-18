@@ -409,7 +409,9 @@ of another pair. Password sources:
 -->
 
 - "keychain" (default of "pair add"): The operating system's credential
-  store, see below.<!--deDE:"keychain" (Standard von "pair add"): Der Anmeldedatenspeicher des Betriebssystems, siehe unten.--><!--frFR:"keychain" (par défaut pour "pair add"): Le magasin d'identifiants du système d'exploitation, voir ci-dessous.-->
+  store, see below. "pair add" asks for the password once (or takes
+  "GOCRYPTFS_PASSWORD"), verifies it and stores it there, later runs read
+  it from there.<!--deDE:"keychain" (Standard von "pair add"): Der Anmeldedatenspeicher des Betriebssystems, siehe unten. "pair add" fragt das Passwort einmal ab (oder nimmt "GOCRYPTFS_PASSWORD"), prüft es und legt es dort ab, spätere Läufe lesen es von dort.--><!--frFR:"keychain" (par défaut pour "pair add"): Le magasin d'identifiants du système d'exploitation, voir ci-dessous. "pair add" demande le mot de passe une fois (ou prend "GOCRYPTFS_PASSWORD"), le vérifie et l'y stocke, les exécutions suivantes l'y lisent.-->
 - "prompt": Asked interactively, once when the daemon starts.<!--deDE:"prompt": Wird interaktiv abgefragt, einmal beim Start des Daemons.--><!--frFR:"prompt": Demandé de façon interactive, une fois au démarrage du démon.-->
 - "environment": Environment variable "GOCRYPTFS_PASSWORD".<!--deDE:"environment": Umgebungsvariable "GOCRYPTFS_PASSWORD".--><!--frFR:"environment": Variable d'environnement "GOCRYPTFS_PASSWORD".-->
 - {"file": "&lt;path&gt;"}: First line of the file ("pair add --passfile").<!--deDE:{"file": "&lt;path&gt;"}: Erste Zeile der Datei ("pair add --passfile").--><!--frFR:{"file": "&lt;path&gt;"}: Première ligne du fichier ("pair add --passfile").-->

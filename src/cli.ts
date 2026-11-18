@@ -89,8 +89,9 @@ Commands:
   sync [<pair>]                  Synchronize given or all configured pairs.
 
   pair add <name> <plaintext> <vault>
-                                 Configure a pair (verifies the password and
-                                 stores it in the keychain by default).
+                                 Configure a pair. Verifies the password and,
+                                 with the default source "keychain", stores
+                                 it there for later runs.
   pair remove <name>             Remove a pair (keeps its trash).
   pair list                      Show configured pairs.
   daemon [<pair>...]             Synchronize pairs shortly after changes and
@@ -119,10 +120,14 @@ Options:
                                  "30s", "10m" (default) or "2h".
   --no-watch                     Synchronize a pair only in its interval, not
                                  shortly after file system changes.
-  --password <source>            Password source of a pair: "keychain"
-                                 (default), "prompt" or "environment".
-                                 "--passfile" and "--extpass" configure a
-                                 file or command instead.
+  --password <source>            Where "sync", "daemon" and the service get
+                                 the password of a pair from later:
+                                 "keychain" (default, "pair add" asks for it
+                                 once and stores it there), "prompt" (asked
+                                 when started) or "environment"
+                                 ("GOCRYPTFS_PASSWORD"). "--passfile" and
+                                 "--extpass" configure a file or command
+                                 instead.
   -h, --help                     Show this help.
   -v, --version                  Show the version.
 
@@ -461,8 +466,11 @@ export const run = async (
                 Object.keys(settings.pairs)
             if (pairNames.length === 0)
                 throw new UsageError(
-                    'No pairs configured, see "pair add" or give a ' +
-                    'plaintext directory and a vault.'
+                    'No pairs configured, see "pair add"' +
+                    // NOTE: Only "sync" accepts paths instead of pairs.
+                    (command === 'sync' ?
+                        ' or give a plaintext directory and a vault.' :
+                        '.')
                 )
             if (values.config !== undefined)
                 throw new UsageError(

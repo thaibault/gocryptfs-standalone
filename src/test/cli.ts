@@ -331,7 +331,12 @@ describe('cli', () => {
 
         test('pair add, list, sync, daemon and remove', async () => {
             expect((await runWithPairs(['sync'])).errors[0])
-                .toContain('No pairs configured')
+                .toContain(
+                    'No pairs configured, see "pair add" or give a ' +
+                    'plaintext directory and a vault.'
+                )
+            expect((await runWithPairs(['daemon'])).errors[0])
+                .toContain('No pairs configured, see "pair add".')
 
             // Wrong passwords are never stored.
             process.env.GOCRYPTFS_PASSWORD = 'wrong'
