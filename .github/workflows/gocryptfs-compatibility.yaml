@@ -85,12 +85,12 @@ jobs:
         env:
           GOCRYPTFS_STANDALONE_CONFIGURATION_DIRECTORY: ${{ runner.temp }}/configuration
         run: |
-          node dist/index.js sync local vault --passfile password
+          node dist/index.js sync vault local --passfile password
           diff --recursive --no-dereference expected local
 
           echo 'local change' > local/one
           rm local/sub/exact
-          node dist/index.js sync local vault --passfile password
+          node dist/index.js sync vault local --passfile password
 
           gocryptfs -passfile password -quiet vault mount
           test "$(cat mount/one)" = 'local change'
@@ -98,6 +98,6 @@ jobs:
           echo 'remote change' > mount/new
           fusermount3 -u mount
 
-          node dist/index.js sync local vault --passfile password
+          node dist/index.js sync vault local --passfile password
           test "$(cat local/new)" = 'remote change'
           gocryptfs -fsck -passfile password vault
