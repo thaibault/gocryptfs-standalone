@@ -85,10 +85,10 @@ Commands:
   cat <vault> <path>             Decrypt one file to standard output.
   decrypt <vault> <target>       Decrypt the whole vault into target.
   encrypt <source> <vault>       Encrypt the whole source into the vault.
-  sync <plaintext> <vault>       Synchronize both directions (see below).
+  sync <vault> <plaintext>       Synchronize both directions (see below).
   sync [<pair>]                  Synchronize given or all configured pairs.
 
-  pair add <name> <plaintext> <vault>
+  pair add <name> <vault> <plaintext>
                                  Configure a pair. Verifies the password and,
                                  with the default source "keychain", stores
                                  it there for later runs.
@@ -595,7 +595,7 @@ export const run = async (
         case 'sync': {
             let pairs: Array<ResolvedPair>
             if (parameters.length === 2) {
-                const [plaintext, vault] = parameters.map((path) =>
+                const [vault, plaintext] = parameters.map((path) =>
                     resolve(path)
                 )
                 pairs = [{
@@ -616,7 +616,7 @@ export const run = async (
                 pairs = await getPairs(parameters)
             else
                 throw new UsageError(
-                    'Command "sync" expects: [<pair>] or <plaintext> <vault>'
+                    'Command "sync" expects: [<pair>] or <vault> <plaintext>'
                 )
 
             const dryRun = Boolean(values['dry-run'])
@@ -701,7 +701,7 @@ export const run = async (
             }
 
             if (subcommand === 'add' && pairParameters.length === 3) {
-                const [name, plaintextPath, vaultPath] = pairParameters
+                const [name, vaultPath, plaintextPath] = pairParameters
                 if (!PAIR_NAME_PATTERN.test(name))
                     throw new UsageError(
                         `Invalid pair name "${name}" (letters, digits, ` +
@@ -771,7 +771,7 @@ export const run = async (
             }
 
             throw new UsageError(
-                'Command "pair" expects: add <name> <plaintext> <vault>, ' +
+                'Command "pair" expects: add <name> <vault> <plaintext>, ' +
                 'remove <name> or list'
             )
         }

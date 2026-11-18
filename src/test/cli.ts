@@ -262,7 +262,7 @@ describe('cli', () => {
         )).toStrictEqual(0)
         const synchronization = createOutput()
         expect(await run(
-            ['sync', plain, vault, ...options], synchronization.output
+            ['sync', vault, plain, ...options], synchronization.output
         )).toStrictEqual(0)
         expect(synchronization.result.logs.at(-1))
             .toStrictEqual('Applied 10 changes.')
@@ -340,21 +340,21 @@ describe('cli', () => {
 
             // Wrong passwords are never stored.
             process.env.GOCRYPTFS_PASSWORD = 'wrong'
-            expect((await runWithPairs(['pair', 'add', 'docs', plain, vault])).code)
+            expect((await runWithPairs(['pair', 'add', 'docs', vault, plain])).code)
                 .toStrictEqual(EXIT_CODES.wrongPassword)
             expect(passwords.size).toStrictEqual(0)
 
             process.env.GOCRYPTFS_PASSWORD = 'secret'
             expect((await runWithPairs([
-                'pair', 'add', 'docs', plain, vault, '--interval', '1h',
+                'pair', 'add', 'docs', vault, plain, '--interval', '1h',
                 '--exclude', '*.tmp'
             ])).code).toStrictEqual(0)
             delete process.env.GOCRYPTFS_PASSWORD
             expect(passwords.get('docs')).toStrictEqual('secret')
 
-            expect((await runWithPairs(['pair', 'add', 'docs', plain, vault]))
+            expect((await runWithPairs(['pair', 'add', 'docs', vault, plain]))
                 .errors).toStrictEqual(['Pair "docs" already exists.'])
-            expect((await runWithPairs(['pair', 'add', 'a b', plain, vault]))
+            expect((await runWithPairs(['pair', 'add', 'a b', vault, plain]))
                 .code).toStrictEqual(EXIT_CODES.usage)
 
             const listing = await runWithPairs(['pair', 'list'])
@@ -416,7 +416,7 @@ describe('cli', () => {
 
             process.env.GOCRYPTFS_PASSWORD = 'secret'
             expect((await runWithPairs([
-                'pair', 'add', 'separate', plain, separateVault,
+                'pair', 'add', 'separate', separateVault, plain,
                 '--config', configuration, '--password', 'environment',
                 '--no-watch'
             ])).code).toStrictEqual(0)
@@ -437,7 +437,7 @@ describe('cli', () => {
         test('overlapping pairs and a second daemon are refused', async () => {
             process.env.GOCRYPTFS_PASSWORD = 'secret'
             expect((await runWithPairs([
-                'pair', 'add', 'first', plain, vault,
+                'pair', 'add', 'first', vault, plain,
                 '--password', 'environment'
             ])).code).toStrictEqual(0)
 
@@ -450,7 +450,7 @@ describe('cli', () => {
                 [plain, vault]
             ]) {
                 const addition = await runWithPairs([
-                    'pair', 'add', 'second', plaintext, otherVault,
+                    'pair', 'add', 'second', otherVault, plaintext,
                     '--password', 'environment'
                 ])
                 expect(addition.code).toStrictEqual(EXIT_CODES.usage)
@@ -490,7 +490,7 @@ describe('cli', () => {
         })
         test('service refuses pairs needing interactive passwords', async () => {
             expect((await runWithPairs([
-                'pair', 'add', 'interactive', plain, vault, '--password', 'prompt'
+                'pair', 'add', 'interactive', vault, plain, '--password', 'prompt'
             ])).code).toStrictEqual(0)
 
             const installation = await runWithPairs(['service', 'install'])

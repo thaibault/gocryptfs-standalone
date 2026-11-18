@@ -274,7 +274,7 @@ const test = async (executable: string): Promise<void> => {
 
         step('sync into an empty directory')
         const plain = path('plain')
-        run(['sync', plain, path('vault'), ...password])
+        run(['sync', path('vault'), plain, ...password])
         await assertSameTree(source, plain, 'first sync')
 
         step('sync changes back')
@@ -283,7 +283,7 @@ const test = async (executable: string): Promise<void> => {
         await utimes(join(plain, 'a.txt'), future, future)
         await rm(join(plain, 'sub', 'Ünïcödé näme.txt'))
         await writeFile(join(plain, 'new.txt'), 'new\n')
-        run(['sync', plain, path('vault'), ...password])
+        run(['sync', path('vault'), plain, ...password])
         run(['decrypt', path('vault'), path('check'), ...password])
         await assertSameTree(plain, path('check'), 'second sync')
 
@@ -297,7 +297,7 @@ const test = async (executable: string): Promise<void> => {
         run(['info', path('separate-vault'), '--config', configuration])
 
         step('configured pair')
-        run(['pair', 'add', 'smoke', plain, path('vault'), ...password])
+        run(['pair', 'add', 'smoke', path('vault'), plain, ...password])
         if (!run(['sync', 'smoke']).stderr.includes('Applied 0 changes.'))
             throw new Error('Configured pair is not in sync.')
 
@@ -305,7 +305,7 @@ const test = async (executable: string): Promise<void> => {
         // NOTE: The interval is far too long to synchronize the change.
         run(['pair', 'remove', 'smoke'])
         run([
-            'pair', 'add', 'smoke', plain, path('vault'), ...password,
+            'pair', 'add', 'smoke', path('vault'), plain, ...password,
             '--interval', '1h'
         ])
         let daemonOutput = ''

@@ -151,7 +151,7 @@ gocryptfs-standalone info <vault>
 gocryptfs-standalone cat <vault> <path> > file
 gocryptfs-standalone decrypt <vault> <target>
 gocryptfs-standalone encrypt <source> <vault>
-gocryptfs-standalone sync <plaintext> <vault> [--dry-run] [--trash-days 30]
+gocryptfs-standalone sync <vault> <plaintext> [--dry-run] [--trash-days 30]
 ```
 
 "decrypt" and "encrypt" work one way: existing files on the target side get
@@ -341,7 +341,7 @@ synchronized by name, all at once or in the background:
 
 ```bash
 # Asks for the password, verifies it and stores it in the keychain.
-gocryptfs-standalone pair add documents ~/Documents/private ~/GoogleDrive/vault --interval 10m
+gocryptfs-standalone pair add documents ~/GoogleDrive/vault ~/Documents/private --interval 10m
 gocryptfs-standalone pair list
 gocryptfs-standalone sync documents        # one pair
 gocryptfs-standalone sync                  # all pairs
