@@ -451,13 +451,6 @@ export const synchronize = async (
                 }
                 break
             case 'compare':
-                if (!await hasSameContent(
-                    key,
-                    getPath('plain', action.path),
-                    getPath('cipher', action.path)
-                ))
-                    await resolveConflict(action.path, action)
-                break
             case 'conflict':
                 await resolveConflict(action.path, action)
                 break
@@ -482,12 +475,26 @@ export const synchronize = async (
         }
 
         const touched = new Set<string>()
-        for (const action of actions) {
-            onAction(action)
-            if (action.type === 'skip')
-                continue
-
+        for (const [index, plannedAction] of actions.entries()) {
+            let action = plannedAction
             try {
+                /*
+                    NOTE: Comparisons are reported once decided, so equal
+                    copies stay silent and only written conflicts show up.
+                */
+                if (action.type === 'compare')
+                    action = actions[index] = await hasSameContent(
+                        key,
+                        getPath('plain', action.path),
+                        getPath('cipher', action.path)
+                    ) ?
+                        {type: 'record', path: action.path} :
+                        {...action, type: 'conflict'}
+
+                onAction(action)
+                if (action.type === 'skip')
+                    continue
+
                 await apply(action)
             } catch (error) {
                 result.failed.push({

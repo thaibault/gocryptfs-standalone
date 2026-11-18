@@ -220,7 +220,7 @@ describe('synchronize', () => {
         const actions = await sync()
 
         expect(actions.map(({path, type}) => `${type} ${path}`))
-            .toStrictEqual(['compare other.txt', 'compare same.txt'])
+            .toStrictEqual(['conflict other.txt'])
         expect((await readdir(plain)).sort()).toStrictEqual([
             'other (conflict host 2026-11-07 13-04-05).txt',
             'other.txt',
