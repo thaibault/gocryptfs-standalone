@@ -101,7 +101,7 @@ export const createState = (
     plainPath,
     synchronizedAt: null,
     vaultPath,
-    version: 1
+    version: 2
 })
 /**
  * Loads the state of the last synchronization. A missing or unreadable state
@@ -127,16 +127,19 @@ export const loadState = async (
     }
 
     try {
-        const state = JSON.parse(content) as Partial<SynchronizationState>
+        const state = JSON.parse(content) as
+            Omit<Partial<SynchronizationState>, 'version'> & {version?: number}
         if (
-            state.version !== 1 ||
+            // NOTE: Version 1 only lacks "seal".
+            ![1, 2].includes(state.version as number) ||
             typeof state.entries !== 'object' ||
             state.plainPath !== plainPath ||
-            state.vaultPath !== vaultPath
+            state.vaultPath !== vaultPath ||
+            ![undefined, 'sealed', 'sealing'].includes(state.seal)
         )
             throw new Error('Unexpected content.')
 
-        return {state: state as SynchronizationState}
+        return {state: {...state, version: 2} as SynchronizationState}
     } catch {
         return {
             state: createState(plainPath, vaultPath),

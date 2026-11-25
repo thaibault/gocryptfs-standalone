@@ -78,6 +78,7 @@ describe('settings', () => {
                     interval: '1h',
                     password: {file: '/password'},
                     plaintext: '/plain',
+                    sealOnStop: true,
                     trashDays: 3,
                     vault: '/vault',
                     watch: false
@@ -92,6 +93,7 @@ describe('settings', () => {
             name: 'plain',
             password: 'prompt',
             plaintext: '/a',
+            sealOnStop: false,
             trashDays: 30,
             vault: '/b',
             watch: true
@@ -102,6 +104,7 @@ describe('settings', () => {
             name: 'custom',
             password: {file: '/password'},
             plaintext: '/plain',
+            sealOnStop: true,
             trashDays: 3,
             vault: '/vault',
             watch: false
@@ -112,6 +115,11 @@ describe('settings', () => {
         settings.pairs.plain.watch = 'yes' as unknown as boolean
         expect(() => resolvePair(settings, 'plain'))
             .toThrow('"watch" has to be true or false')
+
+        settings.pairs.plain.watch = true
+        settings.pairs.plain.sealOnStop = 1 as unknown as boolean
+        expect(() => resolvePair(settings, 'plain'))
+            .toThrow('"sealOnStop" has to be true or false')
     })
     test('loadSettings / saveSettings', async () => {
         const configurationDirectory = join(directory, 'configuration')

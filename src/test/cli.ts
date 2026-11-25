@@ -15,7 +15,7 @@
 */
 // region imports
 import {existsSync} from 'fs'
-import {mkdir, mkdtemp, readFile, rm, writeFile} from 'fs/promises'
+import {mkdir, mkdtemp, readdir, readFile, rm, writeFile} from 'fs/promises'
 import {tmpdir} from 'os'
 import {join} from 'path'
 import {Readable} from 'stream'
@@ -538,6 +538,73 @@ describe('cli', () => {
             expect(passwords.size).toStrictEqual(0)
             expect((await runWithPairs(['pair', 'list'])).logs)
                 .toStrictEqual(['No pairs configured.'])
+        })
+        test('daemon seals pairs when stopping', async () => {
+            const sealVault = join(temporaryDirectory, 'seal-vault')
+            const sealPlain = join(temporaryDirectory, 'seal-plain')
+            await initializeVault(sealVault, Buffer.from('secret'), 10)
+            process.env.GOCRYPTFS_PASSWORD = 'secret'
+            try {
+                expect((await runWithPairs([
+                    'pair', 'add', 'sealed', sealVault, sealPlain,
+                    '--password', 'environment', '--no-watch', '--seal-on-stop'
+                ])).code).toStrictEqual(0)
+                expect((await runWithPairs(['pair', 'list'])).logs.join('\n'))
+                    .toContain('seal:      on stop')
+
+                await mkdir(sealPlain, {recursive: true})
+                await writeFile(join(sealPlain, 'a.txt'), 'a')
+                const runDaemonFor = async (argv: Array<string>) => {
+                    const controller = new AbortController()
+                    setTimeout(() => {
+                        controller.abort()
+                    }, 200)
+                    const result = await runWithPairs(
+                        ['daemon', 'sealed', ...argv], controller.signal
+                    )
+                    expect(result.code).toStrictEqual(0)
+
+                    return result.logs.map((line) => line.replace(/^\S+ /, ''))
+                }
+
+                expect(await runDaemonFor([])).toStrictEqual([
+                    'Started synchronizing "sealed" every 600s.',
+                    '"sealed": encrypt a.txt',
+                    '"sealed": Applied 1 changes.',
+                    '"sealed": Sealed: removed 1 plaintext entries.',
+                    'Stopped.'
+                ])
+                expect(await readdir(sealPlain)).toStrictEqual([])
+
+                // Restored on start, kept without sealing.
+                expect(await runDaemonFor(['--no-seal-on-stop']))
+                    .toStrictEqual([
+                        'Started synchronizing "sealed" every 600s.',
+                        '"sealed": decrypt a.txt',
+                        '"sealed": Restored the plaintext directory of the ' +
+                        'sealed pair.',
+                        '"sealed": Applied 1 changes.',
+                        'Stopped.'
+                    ])
+                expect(await readFile(join(sealPlain, 'a.txt'), 'utf-8'))
+                    .toStrictEqual('a')
+
+                // Handed over to a daemon continuing in the background.
+                expect((await runWithPairs([
+                    'daemon', 'sealed', '--run-in-background', '--seal-on-stop'
+                ])).code).toStrictEqual(0)
+                expect(backgroundStarts.at(-1)?.argv).toStrictEqual([
+                    'daemon', 'sealed', '--seal-on-stop', '--background-child'
+                ])
+
+                expect((await runWithPairs(['sync', 'sealed', '--seal-on-stop']))
+                    .errors).toStrictEqual([
+                    '"--seal-on-stop" applies to "daemon" and "pair add" only.'
+                ])
+            } finally {
+                await runWithPairs(['pair', 'remove', 'sealed'])
+                delete process.env.GOCRYPTFS_PASSWORD
+            }
         })
         test('pair with a separate configuration file', async () => {
             const separateVault = join(temporaryDirectory, 'pair-separate-vault')

@@ -17,30 +17,51 @@
     endregion
 */
 // region imports
+import {writeFileSync} from 'fs'
+import {join} from 'path'
+
 import {runCommand} from './keychain'
 import type {CommandRunner} from './keychain'
-import {APPLICATION_NAME, isRunning} from './state'
+import {
+    APPLICATION_NAME, getConfigurationDirectory, isRunning
+} from './state'
 // endregion
 // Gives a daemon this long to finish a running synchronization.
 export const STOP_TIMEOUT_IN_MILLISECONDS = 60 * 1000
 export const STOP_POLL_INTERVAL_IN_MILLISECONDS = 100
+// A daemon checks this often whether it has been asked to stop via file.
+export const STOP_REQUEST_POLL_INTERVAL_IN_MILLISECONDS = 1000
+/**
+ * Determines the file asking given daemon to stop. Used on windows where
+ * signals end processes immediately without any chance to clean up.
+ * @param pid - Process id of the daemon.
+ * @param configurationDirectory - Application configuration directory.
+ * @returns Absolute file path.
+ */
+export const getStopRequestPath = (
+    pid: number,
+    configurationDirectory: string = getConfigurationDirectory()
+): string => join(configurationDirectory, `daemon-${String(pid)}.stop`)
 
 export interface ProcessControl {
     // Resolves with the command line or null if it can not be determined.
     getCommandLine: (pid: number) => Promise<null | string>
     isRunning: (pid: number) => boolean
-    // NOTE: Ends processes immediately on windows.
+    // Asks given process to stop (gracefully, see "getStopRequestPath").
     terminate: (pid: number) => void
 }
 /**
  * Creates process controls of the current platform.
  * @param run - Runs helper programs ("ps" or PowerShell).
  * @param platform - Operating system.
+ * @param configurationDirectory - Application configuration directory
+ * (holds stop requests on windows).
  * @returns Process controls.
  */
 export const createProcessControl = (
     run: CommandRunner = runCommand,
-    platform: NodeJS.Platform = process.platform
+    platform: NodeJS.Platform = process.platform,
+    configurationDirectory: string = getConfigurationDirectory()
 ): ProcessControl => ({
     getCommandLine: async (pid) => {
         try {
@@ -67,7 +88,14 @@ export const createProcessControl = (
     },
     isRunning,
     terminate: (pid) => {
-        process.kill(pid, 'SIGTERM')
+        /*
+            NOTE: "SIGTERM" ends processes immediately on windows, the
+            daemon would not finish (or seal) its pairs.
+        */
+        if (platform === 'win32')
+            writeFileSync(getStopRequestPath(pid, configurationDirectory), '')
+        else
+            process.kill(pid, 'SIGTERM')
     }
 })
 /**

@@ -275,5 +275,19 @@ describe('plan', () => {
                 {'a.txt': synced(OLD)}
             ).map(({type}) => type)).toStrictEqual(['trash', 'transfer'])
         })
+        test('sealed plaintext gets restored instead of deleted', () => {
+            const cipher = {d: directory, 'd/a': encrypted(OLD)}
+            const state = {d: synced(directory), 'd/a': synced(OLD)}
+
+            expect(createPlan(new Map(), new Map(Object.entries(cipher)), state, HOST, DATE, true))
+                .toStrictEqual([
+                    {type: 'createDirectory', path: 'd', side: 'plain'},
+                    {type: 'transfer', path: 'd/a', from: 'cipher'}
+                ])
+            // Remaining plaintext follows the usual rules.
+            expect(createPlan(
+                new Map([['b', OLD]]), new Map(), {b: synced(OLD)}, HOST, DATE, true
+            )).toStrictEqual([{type: 'trash', path: 'b', side: 'plain'}])
+        })
     })
 })

@@ -47,6 +47,7 @@ import type {
     Action,
     Change,
     ConflictResolution,
+    SealResult,
     Side,
     Snapshot,
     Snapshots,
@@ -64,6 +65,11 @@ export interface SynchronizationOptions {
     key: Buffer
     onAction?: (action: Action) => void
     plainPath: string
+    /*
+        Removes the plaintext directory's content after synchronizing (see
+        "seal"), the next synchronization restores it.
+    */
+    seal?: boolean
     trashRetentionInDays?: number
     vaultPath: string
 }
@@ -276,7 +282,109 @@ export const isSynchronized = async (
     return true
 }
 /**
+ * Removes all plaintext entries the vault holds in exactly the version known
+ * from the last synchronization, keeps everything else (changed afterwards,
+ * excluded, not synchronizable, failed). Directories are removed when they
+ * end up empty, the plaintext directory itself stays. The state has to be
+ * marked as "sealing" before, so missing entries never count as deletions.
+ * NOTE: Removing only unlinks files, it does not wipe their content from the
+ * storage.
+ * @param roots - Plaintext and vault directory.
+ * @param entries - State after the last synchronization.
+ * @param isExcluded - Decides which relative paths are left out.
+ * @returns Number of removed entries and kept ones with their reason.
+ */
+export const removePlaintext = async (
+    roots: Record<Side, string>,
+    entries: Record<string, StateEntry>,
+    isExcluded: ExcludeMatcher = excludeNothing
+): Promise<SealResult> => {
+    const getPath = (side: Side, path: string) =>
+        join(roots[side], ...path.split('/'))
+    const kept = new Map<string, string>()
+    let removed = 0
+
+    // NOTE: Reverse order visits nested entries before their parents.
+    const paths = Object.keys(entries).sort().reverse()
+    for (const path of paths) {
+        const entry = entries[path]
+        if (entry.plain.type === 'directory')
+            continue
+
+        try {
+            const current = await getSnapshot(getPath('plain', path))
+            if (!current)
+                continue
+
+            if (!isSameSnapshot(current, entry.plain)) {
+                kept.set(path, 'Changed since the last synchronization.')
+
+                continue
+            }
+            if (!isSameSnapshot(
+                await getSnapshot(getPath('cipher', path)), entry.cipher
+            )) {
+                kept.set(
+                    path,
+                    'The vault version changed since the last ' +
+                    'synchronization.'
+                )
+
+                continue
+            }
+
+            await rm(getPath('plain', path))
+            removed += 1
+        } catch (error) {
+            kept.set(
+                path, error instanceof Error ? error.message : String(error)
+            )
+        }
+    }
+
+    for (const path of paths)
+        if (entries[path].plain.type === 'directory')
+            try {
+                await rmdir(getPath('plain', path))
+                removed += 1
+            } catch (error) {
+                // NOTE: Kept if something remained inside.
+                if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(
+                    (error as {code?: string}).code ?? ''
+                ))
+                    kept.set(
+                        path,
+                        error instanceof Error ? error.message : String(error)
+                    )
+            }
+
+    // Reports everything left behind, not only what we decided to keep.
+    const remaining = await scan(roots.plain, 'plain')
+    for (const [path, snapshot] of remaining.snapshots)
+        if (snapshot.type !== 'directory' && !kept.has(path))
+            kept.set(
+                path,
+                isExcluded(path, false) ?
+                    'Excluded from synchronization.' :
+                    'Not synchronized to the vault (yet).'
+            )
+    for (const {path, reason} of remaining.skipped)
+        if (!kept.has(path))
+            kept.set(path, reason)
+
+    return {
+        kept: [...kept]
+            .sort(([first], [second]) =>
+                first < second ? -1 : first > second ? 1 : 0
+            )
+            .map(([path, reason]) => ({path, reason})),
+        removed
+    }
+}
+/**
  * Synchronizes a plaintext directory with a vault in both directions.
+ * Missing plaintext entries of a sealed pair (see "seal" option) get restored
+ * instead of being deleted in the vault.
  * @param options - Pair, key and behavior.
  * @returns Planned (or applied) actions and failures.
  */
@@ -290,6 +398,7 @@ export const synchronize = async (
         onAction = () => {
             // Nothing to report by default.
         },
+        seal = false,
         trashRetentionInDays = DEFAULT_TRASH_RETENTION_IN_DAYS
     } = options
     const date = options.date ?? new Date()
@@ -333,8 +442,14 @@ export const synchronize = async (
                     'plaintext file system can not represent.'
                 )
 
+        const wasSealed = state.seal !== undefined
         const plannedActions = createPlan(
-            snapshots.plain, snapshots.cipher, state.entries, host, date
+            snapshots.plain,
+            snapshots.cipher,
+            state.entries,
+            host,
+            date,
+            wasSealed
         )
         const actions: Array<Action> = [
             ...[...excluded].map(([path, reason]): Action =>
@@ -533,8 +648,29 @@ export const synchronize = async (
         for (const path of touched)
             await refresh(path)
 
+        /*
+            NOTE: Failed restores keep the seal, so their missing plaintext
+            entries still do not count as deletions next time.
+        */
+        if (wasSealed && result.failed.length === 0) {
+            delete state.seal
+            result.unsealed = true
+        }
+
         state.synchronizedAt = date.toISOString()
         await saveState(pairDirectory, state)
+
+        if (seal) {
+            // NOTE: Saved first, so an interruption never looks like deletes.
+            state.seal = 'sealing'
+            await saveState(pairDirectory, state)
+
+            result.seal =
+                await removePlaintext(roots, state.entries, excludes)
+
+            state.seal = 'sealed'
+            await saveState(pairDirectory, state)
+        }
 
         return result
     } finally {

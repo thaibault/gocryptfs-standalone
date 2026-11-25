@@ -17,6 +17,7 @@
     endregion
 */
 // region imports
+import {existsSync} from 'fs'
 import {mkdir, open, readFile, rm} from 'fs/promises'
 import {dirname, join, resolve} from 'path'
 import type {Readable} from 'stream'
@@ -70,7 +71,13 @@ import {
     getPairDirectory,
     LockedError
 } from './state'
-import {createProcessControl, isDaemonCommandLine, stopDaemon} from './stop'
+import {
+    createProcessControl,
+    getStopRequestPath,
+    isDaemonCommandLine,
+    STOP_REQUEST_POLL_INTERVAL_IN_MILLISECONDS,
+    stopDaemon
+} from './stop'
 import type {ProcessControl} from './stop'
 import {isSynchronized, synchronize} from './synchronize'
 import {
@@ -138,6 +145,9 @@ Options:
                                  "30s", "10m" (default) or "2h".
   --no-watch                     Synchronize a pair only in its interval, not
                                  shortly after file system changes.
+  --seal-on-stop                 Let "daemon" remove the plaintext copies the
+                                 vault holds when it stops and restore them
+                                 on its next start (see readme for limits).
   --run-in-background            Let "daemon" ask for passwords and run the
                                  initial synchronization, then continue as
                                  detached process logging to "daemon.log" in
@@ -341,6 +351,7 @@ export const run = async (
                 // NOTE: Internal, see "background" module.
                 [BACKGROUND_CHILD_OPTION_NAME]: {type: 'boolean'},
                 'run-in-background': {type: 'boolean'},
+                'seal-on-stop': {type: 'boolean'},
                 exclude: {multiple: true, type: 'string'},
                 'trash-days': {type: 'string'},
                 interval: {type: 'string'},
@@ -378,6 +389,13 @@ export const run = async (
         )
             throw new UsageError(
                 '"--run-in-background" applies to "daemon" only.'
+            )
+        if (
+            values['seal-on-stop'] !== undefined &&
+            !['daemon', 'pair'].includes(command)
+        )
+            throw new UsageError(
+                '"--seal-on-stop" applies to "daemon" and "pair add" only.'
             )
         if (values['log-file'] !== undefined && !values['run-in-background'])
             throw new UsageError(
@@ -469,7 +487,8 @@ export const run = async (
             pair: ResolvedPair,
             contentKey: Buffer,
             log: (text: string) => void,
-            dryRun = false
+            dryRun = false,
+            seal = false
         ) => {
             const result = await synchronize({
                 dryRun,
@@ -481,6 +500,7 @@ export const run = async (
                         log(description)
                 },
                 plainPath: pair.plaintext,
+                seal,
                 trashRetentionInDays: pair.trashDays,
                 vaultPath: pair.vault
             })
@@ -489,6 +509,21 @@ export const run = async (
                 output.error(result.warning)
             for (const {path, reason} of result.failed)
                 output.error(`Failed "${path}": ${reason}`)
+
+            if (result.unsealed)
+                log('Restored the plaintext directory of the sealed pair.')
+            if (result.seal) {
+                for (const {path, reason} of result.seal.kept)
+                    log(`Kept plaintext "${path}": ${reason}`)
+                log(
+                    `Sealed: removed ${String(result.seal.removed)} ` +
+                    'plaintext entries' +
+                    (result.seal.kept.length > 0 ?
+                        `, kept ${String(result.seal.kept.length)}` :
+                        '') +
+                    '.'
+                )
+            }
 
             const changes = result.actions.filter((action) =>
                 !['forget', 'record', 'skip'].includes(action.type)
@@ -540,6 +575,7 @@ export const run = async (
                         {config: resolve(pair.config)}),
                     excludes: [...pair.excludes, ...values.exclude ?? []],
                     plaintext: resolve(pair.plaintext),
+                    sealOnStop: values['seal-on-stop'] ?? pair.sealOnStop,
                     trashDays: trashDays ?? pair.trashDays,
                     vault: resolve(pair.vault),
                     watch: values.watch ?? pair.watch
@@ -657,6 +693,7 @@ export const run = async (
                     name: 'command line',
                     password: 'prompt',
                     plaintext,
+                    sealOnStop: false,
                     trashDays:
                         parseTrashDays() ?? DEFAULT_TRASH_RETENTION_IN_DAYS,
                     vault,
@@ -721,6 +758,8 @@ export const run = async (
                         `${JSON.stringify(pair.password)}\n` +
                         `    trash:     ${String(pair.trashDays)} days\n` +
                         `    watch:     ${pair.watch ? 'yes' : 'no'}\n` +
+                        '    seal:      ' +
+                        `${pair.sealOnStop ? 'on stop' : 'no'}\n` +
                         `    excludes:  ${pair.excludes.join(' ')}`
                     )
                 }
@@ -804,6 +843,9 @@ export const run = async (
                     ...(values.interval ? {interval: values.interval} : {}),
                     password,
                     plaintext,
+                    ...(values['seal-on-stop'] === undefined ?
+                        {} :
+                        {sealOnStop: values['seal-on-stop']}),
                     ...(values['trash-days'] === undefined ?
                         {} :
                         {trashDays: parseTrashDays()}),
@@ -922,6 +964,11 @@ export const run = async (
                                 ...(values.watch === undefined ?
                                     [] :
                                     [values.watch ? '--watch' : '--no-watch']),
+                                ...(values['seal-on-stop'] === undefined ?
+                                    [] :
+                                    [values['seal-on-stop'] ?
+                                        '--seal-on-stop' :
+                                        '--no-seal-on-stop']),
                                 `--${BACKGROUND_CHILD_OPTION_NAME}`
                             ],
                             contentKeys,
@@ -946,9 +993,32 @@ export const run = async (
                 }
                 const signal =
                     givenDependencies.signal ?? abortController.signal
-                if (!givenDependencies.signal)
-                    for (const name of ['SIGINT', 'SIGTERM'] as const)
+                /*
+                    NOTE: On windows "SIGHUP" means a closed console window
+                    (some seconds left to finish), "SIGBREAK" Ctrl+Break.
+                    Elsewhere "SIGHUP" is left alone (e.g. "nohup").
+                */
+                const signalNames: Array<NodeJS.Signals> =
+                    process.platform === 'win32' ?
+                        ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'] :
+                        ['SIGINT', 'SIGTERM']
+                const stopRequestPath = getStopRequestPath(process.pid)
+                let stopRequestPoller: NodeJS.Timeout | undefined
+                if (!givenDependencies.signal) {
+                    for (const name of signalNames)
                         process.once(name, stop)
+
+                    // See "stop" module (graceful stops on windows).
+                    await rm(stopRequestPath, {force: true})
+                    stopRequestPoller = setInterval(
+                        () => {
+                            if (existsSync(stopRequestPath))
+                                stop()
+                        },
+                        STOP_REQUEST_POLL_INTERVAL_IN_MILLISECONDS
+                    )
+                    stopRequestPoller.unref()
+                }
 
                 const log = (text: string) => {
                     output.log(`${new Date().toISOString()} ${text}`)
@@ -959,6 +1029,36 @@ export const run = async (
                         await output.write(Buffer.from(READY_SIGNAL))
 
                     await runDaemon({
+                        /*
+                            NOTE: Runs after watching ended, so our removals
+                            are not mistaken for changes. A second signal
+                            ends the process right away, the next start
+                            restores an interrupted seal.
+                        */
+                        beforeStop: async () => {
+                            for (const pair of pairs.filter(({sealOnStop}) =>
+                                sealOnStop
+                            ))
+                                try {
+                                    await synchronizePair(
+                                        pair,
+                                        contentKeys.get(pair.name) as Buffer,
+                                        (text) => {
+                                            log(`"${pair.name}": ${text}`)
+                                        },
+                                        false,
+                                        true
+                                    )
+                                } catch (error) {
+                                    log(
+                                        `"${pair.name}": sealing failed, ` +
+                                        'the plaintext directory stays: ' +
+                                        (error instanceof Error ?
+                                            error.message :
+                                            String(error))
+                                    )
+                                }
+                        },
                         isSynchronized: (pair, changes) => isSynchronized(
                             {plainPath: pair.plaintext, vaultPath: pair.vault},
                             changes
@@ -982,7 +1082,10 @@ export const run = async (
                         }
                     })
                 } finally {
-                    for (const name of ['SIGINT', 'SIGTERM'] as const)
+                    clearInterval(stopRequestPoller)
+                    if (stopRequestPoller)
+                        await rm(stopRequestPath, {force: true})
+                    for (const name of signalNames)
                         process.removeListener(name, stop)
                     for (const key of contentKeys.values())
                         key.fill(0)

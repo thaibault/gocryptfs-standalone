@@ -53,6 +53,11 @@ export interface PairSettings {
     interval?: number | string
     password?: PasswordSource
     plaintext: string
+    /*
+        Removes the plaintext directory's content when a daemon stops and
+        restores it on its next start (daemon only).
+    */
+    sealOnStop?: boolean
     trashDays?: number
     vault: string
     // Synchronizes shortly after file system changes (daemon only).
@@ -63,6 +68,7 @@ export interface Settings {
     defaults: {
         excludes: Array<string>
         interval: number | string
+        sealOnStop: boolean
         trashDays: number
         watch: boolean
     }
@@ -76,6 +82,7 @@ export interface ResolvedPair {
     name: string
     password: PasswordSource
     plaintext: string
+    sealOnStop: boolean
     trashDays: number
     vault: string
     watch: boolean
@@ -88,6 +95,7 @@ export const createSettings = (): Settings => ({
     defaults: {
         excludes: [...DEFAULT_EXCLUDES],
         interval: DEFAULT_INTERVAL,
+        sealOnStop: false,
         trashDays: 30,
         watch: true
     },
@@ -175,6 +183,12 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
     if (typeof watch !== 'boolean')
         throw new Error(`Pair "${name}": "watch" has to be true or false.`)
 
+    const sealOnStop = pair.sealOnStop ?? settings.defaults.sealOnStop
+    if (typeof sealOnStop !== 'boolean')
+        throw new Error(
+            `Pair "${name}": "sealOnStop" has to be true or false.`
+        )
+
     return {
         ...(pair.config === undefined ? {} : {config: pair.config}),
         excludes: [...settings.defaults.excludes, ...pair.excludes ?? []],
@@ -183,6 +197,7 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
         name,
         password: validatePasswordSource(pair.password ?? 'prompt'),
         plaintext: pair.plaintext,
+        sealOnStop,
         trashDays,
         vault: pair.vault,
         watch

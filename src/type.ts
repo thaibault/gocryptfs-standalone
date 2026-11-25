@@ -100,12 +100,27 @@ export interface StateEntry {
     cipher: Snapshot
     plain: Snapshot
 }
+/**
+ * Whether the plaintext directory has been removed after synchronizing (see
+ * "seal" in the "synchronize" module). The state "sealing" means the removal
+ * started but did not finish (e.g. a crash), "sealed" that it finished. In
+ * both cases missing plaintext entries are not deleted but not restored yet,
+ * the next synchronization restores them from the vault.
+ */
+export type SealState = 'sealed' | 'sealing'
 export interface SynchronizationState {
     entries: Record<string, StateEntry>
     plainPath: string
+    // Not set while the plaintext directory is fully available.
+    seal?: SealState
     synchronizedAt: null | string
     vaultPath: string
-    version: 1
+    /*
+        NOTE: Version 2 introduced "seal", older versions of this application
+        refuse it and merge both sides without deleting anything instead of
+        mistaking a sealed plaintext directory for deletions.
+    */
+    version: 2
 }
 
 export interface ConflictResolution {
@@ -133,8 +148,17 @@ export type Action =
     {type: 'forget', path: string} |
     {type: 'skip', path: string, reason: string}
 
+export interface SealResult {
+    // Plaintext entries kept since the vault does not hold them (yet).
+    kept: Array<{path: string, reason: string}>
+    removed: number
+}
 export interface SynchronizationResult {
     actions: Array<Action>
     failed: Array<{path: string, reason: string}>
+    // Set if sealing was requested (and no dry run).
+    seal?: SealResult
+    // Plaintext directory has been restored completely after a seal.
+    unsealed?: boolean
 }
 // endregion

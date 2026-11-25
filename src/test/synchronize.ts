@@ -38,13 +38,23 @@ import {
     decryptFileContent, deriveContentKey, encryptFileContent
 } from '../content'
 import {
-    acquireLock, getPairDirectory, LockedError, purgeTrash
+    acquireLock,
+    getPairDirectory,
+    loadState,
+    LockedError,
+    purgeTrash,
+    saveState,
+    STATE_FILE_NAME
 } from '../state'
 import {
-    findCaseCollisions, hasSameContent, isSynchronized, synchronize
+    findCaseCollisions,
+    hasSameContent,
+    isSynchronized,
+    removePlaintext,
+    synchronize
 } from '../synchronize'
 import {transformFile} from '../tree'
-import type {Action, Change} from '../type'
+import type {Action, Change, SynchronizationResult} from '../type'
 // endregion
 const DATE = new Date(2026, 10, 7, 13, 4, 5)
 const CONFLICT_SUFFIX = '(conflict host 2026-11-07 13-04-05)'
@@ -107,6 +117,42 @@ const sync = async (dryRun = false, excludes: Array<string> = []) => {
     expect(result.failed).toStrictEqual([])
 
     return actions.filter(({type}) => !['forget', 'record'].includes(type))
+}
+
+const syncWithResult = async (
+    seal = false, excludes: Array<string> = []
+): Promise<SynchronizationResult & {changes: Array<Action>}> => {
+    const changes: Array<Action> = []
+    const result = await synchronize({
+        configurationDirectory,
+        date: DATE,
+        excludes: createExcludeMatcher(excludes),
+        host: 'host',
+        key,
+        onAction: (action) => {
+            if (!['forget', 'record'].includes(action.type))
+                changes.push(action)
+        },
+        plainPath: plain,
+        seal,
+        vaultPath: vault
+    })
+
+    expect(result.failed).toStrictEqual([])
+
+    return {...result, changes}
+}
+const getState = async () => (await loadState(
+    getPairDirectory(plain, vault, configurationDirectory), plain, vault
+)).state
+const setState = async (
+    change: (state: Awaited<ReturnType<typeof getState>>) => void
+) => {
+    const state = await getState()
+    change(state)
+    await saveState(
+        getPairDirectory(plain, vault, configurationDirectory), state
+    )
 }
 
 describe('synchronize', () => {
@@ -362,6 +408,146 @@ describe('synchronize', () => {
         expect(await sync(false, excludes)).toStrictEqual([])
         expect((await readdir(plain)).sort())
             .toStrictEqual(['a.txt', 'cache'])
+    })
+    test('sealing removes synchronized plaintext, a run restores it', async () => {
+        await writePlain('a.txt', 'a')
+        await writePlain('dir/b.txt', 'b')
+        await writePlain('dir/nested/c.txt', 'c')
+        await writePlain('note.log', 'excluded')
+        await symlink('a.txt', join(plain, 'link'))
+
+        const sealed = await syncWithResult(true, ['*.log'])
+        expect(sealed.changes).toHaveLength(6)
+        expect(sealed.unsealed).toBeUndefined()
+        expect(sealed.seal).toStrictEqual({
+            kept: [{path: 'note.log', reason: 'Excluded from synchronization.'}],
+            removed: 6
+        })
+        expect(await readdir(plain)).toStrictEqual(['note.log'])
+        expect((await getState()).seal).toStrictEqual('sealed')
+
+        // Missing plaintext is restored, nothing gets deleted in the vault.
+        await writeCipher('dir/b.txt', 'remote')
+        const restored = await syncWithResult(false, ['*.log'])
+        expect(restored.unsealed).toStrictEqual(true)
+        expect(restored.changes).toStrictEqual([
+            {type: 'createDirectory', path: 'dir', side: 'plain'},
+            {type: 'createDirectory', path: 'dir/nested', side: 'plain'},
+            {type: 'transfer', path: 'a.txt', from: 'cipher'},
+            {type: 'transfer', path: 'dir/b.txt', from: 'cipher'},
+            {type: 'transfer', path: 'dir/nested/c.txt', from: 'cipher'},
+            {type: 'transfer', path: 'link', from: 'cipher'}
+        ])
+        expect(await readPlain('dir/b.txt')).toStrictEqual('remote')
+        expect(await readPlain('dir/nested/c.txt')).toStrictEqual('c')
+        expect(await readlink(join(plain, 'link'))).toStrictEqual('a.txt')
+        expect(await readPlain('note.log')).toStrictEqual('excluded')
+        expect((await getState()).seal).toBeUndefined()
+
+        expect((await syncWithResult(false, ['*.log'])).changes)
+            .toStrictEqual([])
+    })
+    test('sealing keeps plaintext the vault does not hold', async () => {
+        await writePlain('changed.txt', 'one')
+        await writePlain('remote.txt', 'one')
+        await writePlain('same.txt', 'one')
+        await sync()
+
+        await writePlain('changed.txt', 'two')
+        await writeCipher('remote.txt', 'two')
+        await writePlain('new/new.txt', 'new')
+
+        expect(await removePlaintext(
+            {cipher: vault, plain}, (await getState()).entries
+        )).toStrictEqual({
+            kept: [
+                {
+                    path: 'changed.txt',
+                    reason: 'Changed since the last synchronization.'
+                },
+                {
+                    path: 'new/new.txt',
+                    reason: 'Not synchronized to the vault (yet).'
+                },
+                {
+                    path: 'remote.txt',
+                    reason: 'The vault version changed since the last ' +
+                        'synchronization.'
+                }
+            ],
+            removed: 1
+        })
+        expect((await readdir(plain)).sort())
+            .toStrictEqual(['changed.txt', 'new', 'remote.txt'])
+    })
+    test('an interrupted seal restores instead of deleting', async () => {
+        await writePlain('removed.txt', 'removed')
+        await writePlain('kept.txt', 'kept')
+        await writePlain('deleted-remotely.txt', 'deleted')
+        await sync()
+
+        // Crashed while removing: only parts of the plaintext are gone.
+        await setState((state) => {
+            state.seal = 'sealing'
+        })
+        await rm(join(plain, 'removed.txt'))
+        await rm(join(vault, 'deleted-remotely.txt'))
+
+        const result = await syncWithResult()
+        expect(result.changes).toStrictEqual([
+            {type: 'trash', path: 'deleted-remotely.txt', side: 'plain'},
+            {type: 'transfer', path: 'removed.txt', from: 'cipher'}
+        ])
+        expect(result.unsealed).toStrictEqual(true)
+        expect(await readPlain('removed.txt')).toStrictEqual('removed')
+        expect(await readCipher('removed.txt')).toStrictEqual('removed')
+
+        // Afterwards deletions count again.
+        await rm(join(plain, 'removed.txt'))
+        expect(await sync()).toStrictEqual(
+            [{type: 'trash', path: 'removed.txt', side: 'cipher'}]
+        )
+    })
+    test('failed restores keep the seal', async () => {
+        await writePlain('a.txt', 'a')
+        await syncWithResult(true)
+
+        // Destroys the encrypted content, so decrypting fails.
+        await writeFile(join(vault, 'a.txt'), 'corrupt')
+        const result = await synchronize({
+            configurationDirectory,
+            date: DATE,
+            host: 'host',
+            key,
+            plainPath: plain,
+            vaultPath: vault
+        })
+        expect(result.failed).toHaveLength(1)
+        expect(result.unsealed).toBeUndefined()
+        expect((await getState()).seal).toStrictEqual('sealed')
+        expect(await exists(join(vault, 'a.txt'))).toStrictEqual(true)
+    })
+    test('states of version 1 are taken over, unknown seals refused', async () => {
+        await writePlain('a.txt', 'a')
+        await sync()
+
+        const path = join(
+            getPairDirectory(plain, vault, configurationDirectory),
+            STATE_FILE_NAME
+        )
+        const state = JSON.parse(await readFile(path, {encoding: 'utf-8'})) as
+            Record<string, unknown>
+        expect(state.version).toStrictEqual(2)
+
+        await writeFile(path, JSON.stringify({...state, version: 1}))
+        expect(await loadState(
+            getPairDirectory(plain, vault, configurationDirectory), plain, vault
+        )).toStrictEqual({state: {...state, version: 2}})
+
+        await writeFile(path, JSON.stringify({...state, seal: 'unknown'}))
+        expect((await loadState(
+            getPairDirectory(plain, vault, configurationDirectory), plain, vault
+        )).warning).toContain('Ignoring unusable synchronization state')
     })
     test('purgeTrash keeps entries for the configured time', async () => {
         const pairDirectory =

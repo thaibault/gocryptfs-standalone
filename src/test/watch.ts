@@ -57,6 +57,7 @@ describe('watch', () => {
             name: 'docs',
             password: 'keychain',
             plaintext: '/plain',
+            sealOnStop: false,
             trashDays: 30,
             vault: '/vault',
             watch: true

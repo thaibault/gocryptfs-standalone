@@ -128,6 +128,9 @@ export const getConflictPath = (
  * @param state - Entries after the last synchronization.
  * @param host - Name of this machine (used for conflict copies).
  * @param date - Time of the synchronization (used for conflict copies).
+ * @param isSealed - Indicates a (partially) removed plaintext directory (see
+ * "seal" in the "synchronize" module): missing plaintext entries get restored
+ * from the vault instead of being deleted there.
  * @returns Actions sorted in the order to apply them.
  */
 export const createPlan = (
@@ -135,7 +138,8 @@ export const createPlan = (
     cipher: Snapshots,
     state: Record<string, StateEntry>,
     host: string,
-    date: Date
+    date: Date,
+    isSealed = false
 ): Array<Action> => {
     const actions: Array<Action> = []
     const conflictPaths = new Set<string>()
@@ -261,7 +265,11 @@ export const createPlan = (
         if (!plainSnapshot && !cipherSnapshot)
             actions.push({type: 'forget', path})
         else if (!plainSnapshot && cipherSnapshot)
-            planDeletion(path, cipherSnapshot, 'cipher', entry.cipher)
+            if (isSealed)
+                // NOTE: Removed by sealing, not by the user.
+                planCopy(path, cipherSnapshot, 'cipher')
+            else
+                planDeletion(path, cipherSnapshot, 'cipher', entry.cipher)
         else if (plainSnapshot && !cipherSnapshot)
             planDeletion(path, plainSnapshot, 'plain', entry.plain)
         else if (plainSnapshot && cipherSnapshot) {

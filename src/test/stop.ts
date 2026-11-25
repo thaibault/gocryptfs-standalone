@@ -15,12 +15,19 @@
 */
 // region imports
 import {spawn} from 'child_process'
+import {existsSync} from 'fs'
+import {mkdtemp, rm} from 'fs/promises'
+import {tmpdir} from 'os'
+import {join} from 'path'
 
 import {describe, expect, test} from '@jest/globals'
 
 import type {CommandRunner} from '../keychain'
 import {
-    createProcessControl, isDaemonCommandLine, stopDaemon
+    createProcessControl,
+    getStopRequestPath,
+    isDaemonCommandLine,
+    stopDaemon
 } from '../stop'
 import type {ProcessControl} from '../stop'
 // endregion
@@ -68,6 +75,19 @@ describe('stop', () => {
         expect(await createProcessControl(
             () => Promise.reject(new Error('missing')), 'linux'
         ).getCommandLine(1)).toBeNull()
+    })
+    test('windows daemons are asked to stop via file', async () => {
+        const directory =
+            await mkdtemp(join(tmpdir(), 'gocryptfs-standalone-'))
+        try {
+            createProcessControl(undefined, 'win32', directory).terminate(42)
+            expect(existsSync(getStopRequestPath(42, directory)))
+                .toStrictEqual(true)
+            expect(getStopRequestPath(42, directory))
+                .toStrictEqual(join(directory, 'daemon-42.stop'))
+        } finally {
+            await rm(directory, {force: true, recursive: true})
+        }
     })
     test('stops a real process', async () => {
         const child = spawn(

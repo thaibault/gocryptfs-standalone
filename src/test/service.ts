@@ -159,6 +159,7 @@ describe('daemon', () => {
         name,
         password: 'keychain',
         plaintext: '/a',
+        sealOnStop: false,
         trashDays: 30,
         vault: '/b',
         watch
@@ -205,6 +206,34 @@ describe('daemon', () => {
             'Started synchronizing "fast" every 0.02s, "slow" every 100s.',
             '"fast": Applied 1 changes.',
             '"slow" failed: Vault not reachable.',
+            'Stopped.'
+        ])
+    })
+    test('runDaemon runs "beforeStop" after the last run', async () => {
+        const controller = new AbortController()
+        const events: Array<string> = []
+
+        await runDaemon({
+            beforeStop: () => {
+                events.push('before stop')
+
+                return Promise.resolve()
+            },
+            log: (text) => events.push(text),
+            pairs: [createPair('docs', 100000)],
+            signal: controller.signal,
+            synchronizePair: () => {
+                events.push('run')
+                controller.abort()
+
+                return Promise.resolve(null)
+            }
+        })
+
+        expect(events).toStrictEqual([
+            'Started synchronizing "docs" every 100s.',
+            'run',
+            'before stop',
             'Stopped.'
         ])
     })

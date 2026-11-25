@@ -33,6 +33,11 @@ export const LOCKED_RETRY_INTERVAL_IN_MILLISECONDS = 10 * 1000
 
 export interface DaemonOptions {
     /*
+        Runs once after the abort when no run is active and watching ended
+        (e.g. to seal pairs).
+    */
+    beforeStop?: () => Promise<void>
+    /*
         Decides whether given changes still match the last synchronization
         (e.g. caused by its own writes), so a run triggered only by them can
         be skipped. Without it every change leads to a run.
@@ -108,7 +113,8 @@ export const sleep = (
  * interval (shortly if another process synchronizes the pair), failed
  * watchers get restarted periodically.
  * @param options - Pairs, synchronization, watching and logging.
- * @returns Promise resolving after the abort when no run is active anymore.
+ * @returns Promise resolving after the abort when no run is active anymore
+ * and "beforeStop" finished.
  */
 export const runDaemon = async (options: DaemonOptions): Promise<void> => {
     const LOCKED_RETRY_INTERVAL = LOCKED_RETRY_INTERVAL_IN_MILLISECONDS
@@ -116,6 +122,7 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
     const QUIET_PERIOD = QUIET_PERIOD_IN_MILLISECONDS
     const WATCH_RETRY_INTERVAL = WATCH_RETRY_INTERVAL_IN_MILLISECONDS
     const {
+        beforeStop,
         isSynchronized,
         lockedRetryIntervalInMilliseconds = LOCKED_RETRY_INTERVAL,
         log,
@@ -314,6 +321,8 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
         for (const state of states.values())
             state.watcher?.close()
     }
+
+    await beforeStop?.()
 
     log('Stopped.')
 }
