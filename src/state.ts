@@ -35,9 +35,24 @@ export const LOCK_FILE_NAME = 'lock'
 export const DAEMON_LOCK_FILE_NAME = 'daemon.lock'
 export const TRASH_DIRECTORY_NAME = 'trash'
 export const DEFAULT_TRASH_RETENTION_IN_DAYS = 30
+/*
+    Synchronizations deleting more than this share of all synchronized
+    entries because they are missing in the vault get refused.
+*/
+export const DEFAULT_MAXIMAL_DELETION_PERCENTAGE = 60
+// Deleting at most this many entries is never refused by percentage.
+export const MASS_DELETION_MINIMUM = 10
 
 export class LockedError extends Error {
     name = 'LockedError'
+}
+/*
+    Raised instead of applying a synchronization which would delete a large
+    part of the plaintext directory because it is missing in the vault (e.g.
+    a not yet synchronized cloud folder or an unmounted drive).
+*/
+export class MassDeletionError extends Error {
+    name = 'MassDeletionError'
 }
 /**
  * Determines the user specific configuration directory of this application:

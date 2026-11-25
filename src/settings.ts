@@ -20,7 +20,9 @@
 import {mkdir, readFile, rename, writeFile} from 'fs/promises'
 import {join} from 'path'
 
-import {getConfigurationDirectory} from './state'
+import {
+    DEFAULT_MAXIMAL_DELETION_PERCENTAGE, getConfigurationDirectory
+} from './state'
 // endregion
 export const SETTINGS_FILE_NAME = 'configuration.json'
 export const DEFAULT_INTERVAL = '10m'
@@ -51,6 +53,11 @@ export interface PairSettings {
     config?: string
     excludes?: Array<string>
     interval?: number | string
+    /*
+        Refuses synchronizations deleting a larger share of all entries
+        because they are missing in the vault (100 disables it).
+    */
+    maxDeletePercent?: number
     password?: PasswordSource
     plaintext: string
     /*
@@ -68,6 +75,7 @@ export interface Settings {
     defaults: {
         excludes: Array<string>
         interval: number | string
+        maxDeletePercent: number
         sealOnStop: boolean
         trashDays: number
         watch: boolean
@@ -79,6 +87,7 @@ export interface ResolvedPair {
     config?: string
     excludes: Array<string>
     intervalInMilliseconds: number
+    maxDeletePercent: number
     name: string
     password: PasswordSource
     plaintext: string
@@ -95,6 +104,7 @@ export const createSettings = (): Settings => ({
     defaults: {
         excludes: [...DEFAULT_EXCLUDES],
         interval: DEFAULT_INTERVAL,
+        maxDeletePercent: DEFAULT_MAXIMAL_DELETION_PERCENTAGE,
         sealOnStop: false,
         trashDays: 30,
         watch: true
@@ -124,6 +134,13 @@ export const parseInterval = (value: number | string): number => {
 
     return milliseconds
 }
+/**
+ * Checks whether given value is a percentage.
+ * @param value - Value to check.
+ * @returns Indicates a number between 0 and 100.
+ */
+export const isPercentage = (value: unknown): value is number =>
+    typeof value === 'number' && value >= 0 && value <= 100
 /**
  * Validates a password source.
  * @param value - Value to check.
@@ -183,6 +200,14 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
     if (typeof watch !== 'boolean')
         throw new Error(`Pair "${name}": "watch" has to be true or false.`)
 
+    const maxDeletePercent =
+        pair.maxDeletePercent ?? settings.defaults.maxDeletePercent
+    if (!isPercentage(maxDeletePercent))
+        throw new Error(
+            `Pair "${name}": "maxDeletePercent" has to be a number between 0 ` +
+            'and 100.'
+        )
+
     const sealOnStop = pair.sealOnStop ?? settings.defaults.sealOnStop
     if (typeof sealOnStop !== 'boolean')
         throw new Error(
@@ -194,6 +219,7 @@ export const resolvePair = (settings: Settings, name: string): ResolvedPair => {
         excludes: [...settings.defaults.excludes, ...pair.excludes ?? []],
         intervalInMilliseconds:
             parseInterval(pair.interval ?? settings.defaults.interval),
+        maxDeletePercent,
         name,
         password: validatePasswordSource(pair.password ?? 'prompt'),
         plaintext: pair.plaintext,

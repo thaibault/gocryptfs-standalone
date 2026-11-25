@@ -17,7 +17,7 @@
     endregion
 */
 // region imports
-import {writeFileSync} from 'fs'
+import {existsSync, writeFileSync} from 'fs'
 import {join} from 'path'
 
 import {runCommand} from './keychain'
@@ -43,10 +43,24 @@ export const getStopRequestPath = (
     configurationDirectory: string = getConfigurationDirectory()
 ): string => join(configurationDirectory, `daemon-${String(pid)}.stop`)
 
+/**
+ * Determines the file a daemon keeps while sealing its pairs on stop, so
+ * "stop" can tell a long running seal from a hanging daemon.
+ * @param pid - Process id of the daemon.
+ * @param configurationDirectory - Application configuration directory.
+ * @returns Absolute file path.
+ */
+export const getSealingPath = (
+    pid: number,
+    configurationDirectory: string = getConfigurationDirectory()
+): string => join(configurationDirectory, `daemon-${String(pid)}.sealing`)
+
 export interface ProcessControl {
     // Resolves with the command line or null if it can not be determined.
     getCommandLine: (pid: number) => Promise<null | string>
     isRunning: (pid: number) => boolean
+    // Whether given daemon currently seals its pairs before stopping.
+    isSealing: (pid: number) => boolean
     // Asks given process to stop (gracefully, see "getStopRequestPath").
     terminate: (pid: number) => void
 }
@@ -87,6 +101,8 @@ export const createProcessControl = (
         }
     },
     isRunning,
+    isSealing: (pid) =>
+        existsSync(getSealingPath(pid, configurationDirectory)),
     terminate: (pid) => {
         /*
             NOTE: "SIGTERM" ends processes immediately on windows, the
@@ -110,31 +126,40 @@ export const isDaemonCommandLine = (commandLine: string): boolean =>
     /(^|[\s"'])daemon($|[\s"'])/.test(commandLine)
 /**
  * Asks given daemon to stop and waits until it did, it finishes a running
- * synchronization first.
+ * synchronization first. A daemon still sealing its pairs after the timeout
+ * is left to finish on its own.
  * @param pid - Process id of the daemon.
  * @param control - Process controls.
  * @param timeoutInMilliseconds - Time to wait for the stop.
  * @param pollIntervalInMilliseconds - Time between checks.
- * @returns Promise resolving when the process stopped.
+ * @returns Promise resolving with "stopped" when the process stopped or
+ * "sealing" if it still seals after the timeout.
  */
 export const stopDaemon = async (
     pid: number,
     control: ProcessControl,
     timeoutInMilliseconds = STOP_TIMEOUT_IN_MILLISECONDS,
     pollIntervalInMilliseconds = STOP_POLL_INTERVAL_IN_MILLISECONDS
-): Promise<void> => {
+): Promise<'sealing' | 'stopped'> => {
     control.terminate(pid)
 
     const end = Date.now() + timeoutInMilliseconds
     while (control.isRunning(pid)) {
-        if (Date.now() > end)
+        if (Date.now() > end) {
+            // NOTE: Removing large plaintext directories may take a while.
+            if (control.isSealing(pid))
+                return 'sealing'
+
             throw new Error(
                 `Daemon (process ${String(pid)}) did not stop within ` +
                 `${String(timeoutInMilliseconds / 1000)}s.`
             )
+        }
 
         await new Promise((resolve) =>
             setTimeout(resolve, pollIntervalInMilliseconds)
         )
     }
+
+    return 'stopped'
 }

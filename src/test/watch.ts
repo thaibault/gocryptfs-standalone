@@ -54,6 +54,7 @@ describe('watch', () => {
         const pair: ResolvedPair = {
             excludes: ['*.tmp'],
             intervalInMilliseconds: 1000,
+            maxDeletePercent: 60,
             name: 'docs',
             password: 'keychain',
             plaintext: '/plain',

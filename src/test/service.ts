@@ -30,7 +30,7 @@ import {
     getProgram
 } from '../service'
 import type {ResolvedPair} from '../settings'
-import {LockedError} from '../state'
+import {LockedError, MassDeletionError} from '../state'
 import type {Change} from '../type'
 // endregion
 const PROGRAM = ['/opt/node', '/opt/app/index.js']
@@ -156,6 +156,7 @@ describe('daemon', () => {
     ): ResolvedPair => ({
         excludes: [],
         intervalInMilliseconds: interval,
+        maxDeletePercent: 60,
         name,
         password: 'keychain',
         plaintext: '/a',
@@ -206,6 +207,35 @@ describe('daemon', () => {
             'Started synchronizing "fast" every 0.02s, "slow" every 100s.',
             '"fast": Applied 1 changes.',
             '"slow" failed: Vault not reachable.',
+            'Stopped.'
+        ])
+    })
+    test('runDaemon reports refused mass deletions once', async () => {
+        const controller = new AbortController()
+        const logs: Array<string> = []
+        let runs = 0
+
+        await runDaemon({
+            log: (text) => logs.push(text),
+            pairs: [createPair('docs', 20)],
+            signal: controller.signal,
+            synchronizePair: () => {
+                runs += 1
+                if (runs === 3)
+                    return Promise.resolve('Applied 1 changes.')
+                if (runs === 5)
+                    controller.abort()
+
+                return Promise.reject(new MassDeletionError('Vault is empty.'))
+            }
+        })
+
+        expect(runs).toStrictEqual(5)
+        expect(logs).toStrictEqual([
+            'Started synchronizing "docs" every 0.02s.',
+            '"docs": Vault is empty.',
+            '"docs": Applied 1 changes.',
+            '"docs": Vault is empty.',
             'Stopped.'
         ])
     })

@@ -285,6 +285,34 @@ runs of the same pair. "--dry-run" only shows what would happen.
     seulement ce qui se passerait.
 -->
 
+Two guards protect against folders which are only temporarily missing:
+<!--deDE:Zwei Schutzmechanismen sichern gegen nur vorübergehend fehlende Ordner ab:-->
+<!--frFR:Deux protections évitent les dégâts dus à des dossiers absents seulement temporairement:-->
+
+- A completely empty plaintext folder (e.g. an unmounted drive or a RAM disk
+  after a reboot) is restored from the vault instead of deleting everything
+  there.<!--deDE:Ein vollständig leerer Klartextordner (z. B. ein nicht eingehängtes Laufwerk oder eine RAM-Disk nach einem Neustart) wird aus dem Tresor wiederhergestellt, statt dort alles zu löschen.--><!--frFR:Un dossier en clair entièrement vide (par exemple un disque non monté ou un disque RAM après un redémarrage) est restauré depuis le coffre au lieu de tout y supprimer.-->
+- A run is refused without changing anything (exit code 5) if the vault is
+  empty although entries were synchronized before, or if more than 10 entries
+  and more than 60% ("maxDeletePercent", "--max-delete-percent", 100
+  disables it) of all synchronized entries would be deleted in the plaintext
+  folder because they are missing in the vault. Typical reasons are a cloud
+  client which did not download the vault (completely) yet or a drive which
+  is not mounted, later runs continue normally once the vault is complete.
+  The daemon logs a refusal once and keeps retrying. If the deletions are
+  intended, run "sync --allow-mass-delete" once.<!--deDE:Ein Lauf wird ohne jede Änderung abgelehnt (Exit-Code 5), wenn der Tresor leer ist, obwohl zuvor Einträge synchronisiert wurden, oder wenn mehr als 10 Einträge und mehr als 60 % ("maxDeletePercent", "--max-delete-percent", 100 schaltet es ab) aller synchronisierten Einträge im Klartextordner gelöscht würden, weil sie im Tresor fehlen. Typische Ursachen sind ein Cloud-Client, der den Tresor (noch) nicht vollständig heruntergeladen hat, oder ein nicht eingehängtes Laufwerk; spätere Läufe arbeiten normal weiter, sobald der Tresor vollständig ist. Der Daemon protokolliert eine Ablehnung einmal und versucht es weiter. Sind die Löschungen gewollt, einmal "sync --allow-mass-delete" ausführen.--><!--frFR:Une exécution est refusée sans rien modifier (code de sortie 5) si le coffre est vide alors que des entrées ont été synchronisées auparavant, ou si plus de 10 entrées et plus de 60 % ("maxDeletePercent", "--max-delete-percent", 100 le désactive) de toutes les entrées synchronisées seraient supprimées dans le dossier en clair parce qu'elles manquent dans le coffre. Les causes typiques sont un client cloud qui n'a pas (encore) téléchargé tout le coffre ou un disque non monté; les exécutions suivantes reprennent normalement dès que le coffre est complet. Le démon journalise un refus une fois et continue de réessayer. Si les suppressions sont voulues, exécutez une fois "sync --allow-mass-delete".-->
+
+To empty a pair, delete its content in the vault and run
+"sync --allow-mass-delete".
+<!--deDE:
+    Um ein Paar zu leeren, löscht man den Inhalt im Tresor und führt
+    "sync --allow-mass-delete" aus.
+-->
+<!--frFR:
+    Pour vider une paire, supprimez son contenu dans le coffre et exécutez
+    "sync --allow-mass-delete".
+-->
+
 <!--|deDE:Ausschlüsse-->
 <!--|frFR:Exclusions-->
 ### Excludes
@@ -351,6 +379,7 @@ gocryptfs-standalone sync                  # all pairs
 gocryptfs-standalone daemon                # all pairs on changes and in their intervals
 gocryptfs-standalone daemon --run-in-background  # sync once, then continue detached
 gocryptfs-standalone daemon --run-in-background --log-file ~/sync.log
+gocryptfs-standalone daemon --seal-on-stop # remove the plaintext when stopping
 gocryptfs-standalone stop                  # stop daemons of all pairs (or given ones)
 gocryptfs-standalone service install       # start "daemon" after each log in
 gocryptfs-standalone service status
@@ -374,6 +403,8 @@ can be edited by hand as well:
     "defaults": {
         "excludes": [".DS_Store", "._*", ".~lock.*#", "Thumbs.db", "desktop.ini", "~$*"],
         "interval": "10m",
+        "maxDeletePercent": 60,
+        "sealOnStop": false,
         "trashDays": 30,
         "watch": true
     },
@@ -385,6 +416,8 @@ can be edited by hand as well:
             "excludes": ["*.tmp", "build/"],
             "trashDays": 7,
             "watch": false,
+            "sealOnStop": true,
+            "maxDeletePercent": 100,
             "password": "keychain",
             "config": "/home/me/vault.conf"
         }
@@ -513,12 +546,15 @@ in "daemon.lock" of each pair. Useful for log in scripts or terminals without
 a service.
 
 "stop" ends the daemons watching given or all configured pairs and waits until
-they finished a running synchronization (at most a minute). A daemon watching
+they finished a running synchronization (at most a minute). A daemon still
+sealing its pairs after that minute (see below) is reported as such and stops
+on its own when done, it keeps its locks until then. A daemon watching
 further pairs stops for those as well, including one started by the service
 (until the next log in). Only processes identified as daemon of this
 application get stopped, so a process id reused after a crash is never hit.
-On Windows daemons end immediately, without finishing a running
-synchronization.
+On Windows, where signals end processes immediately, "stop" asks the daemon
+via a file "daemon-&lt;process id&gt;.stop" in the configuration folder, which
+it checks every second.
 <!--deDE:
     "--run-in-background" fragt fehlende Passwörter ab und synchronisiert
     alle Paare einmal im Vordergrund. Danach läuft der Daemon als
@@ -534,12 +570,16 @@ synchronization.
 
     "stop" beendet die Daemons der angegebenen oder aller eingerichteten
     Paare und wartet, bis sie einen laufenden Abgleich abgeschlossen haben
-    (höchstens eine Minute). Ein Daemon, der weitere Paare überwacht, endet
-    auch für diese, ebenso ein vom Dienst gestarteter (bis zur nächsten
+    (höchstens eine Minute). Ein Daemon, der danach noch seine Paare
+    versiegelt (siehe unten), wird als solcher gemeldet und endet von selbst,
+    wenn er fertig ist, seine Sperren behält er bis dahin. Ein Daemon, der
+    weitere Paare überwacht, endet auch für diese, ebenso ein vom Dienst gestarteter (bis zur nächsten
     Anmeldung). Beendet werden nur Prozesse, die als Daemon dieser Anwendung
     erkannt werden, eine nach einem Absturz neu vergebene Prozess-ID trifft
-    also nie einen fremden Prozess. Unter Windows enden Daemons sofort, ohne
-    einen laufenden Abgleich abzuschließen.
+    also nie einen fremden Prozess. Unter Windows, wo Signale Prozesse sofort
+    beenden, bittet "stop" den Daemon über eine Datei
+    "daemon-&lt;process id&gt;.stop" im Konfigurationsordner, die er jede
+    Sekunde prüft.
 -->
 <!--frFR:
     "--run-in-background" demande les mots de passe manquants et synchronise
@@ -557,13 +597,16 @@ synchronization.
 
     "stop" arrête les démons surveillant les paires indiquées ou toutes les
     paires configurées et attend qu'ils aient terminé une synchronisation en
-    cours (une minute au plus). Un démon surveillant d'autres paires s'arrête
-    aussi pour celles-ci, y compris celui lancé par le service (jusqu'à la
+    cours (une minute au plus). Un démon qui scelle encore ses paires après
+    cette minute (voir plus bas) est signalé comme tel et s'arrête de lui-même
+    une fois terminé, il garde ses verrous jusque-là. Un démon surveillant
+    d'autres paires s'arrête aussi pour celles-ci, y compris celui lancé par le service (jusqu'à la
     prochaine connexion). Seuls les processus identifiés comme démon de cette
     application sont arrêtés, un identifiant de processus réattribué après un
-    plantage ne touche donc jamais un processus étranger. Sous Windows, les
-    démons s'arrêtent immédiatement, sans terminer une synchronisation en
-    cours.
+    plantage ne touche donc jamais un processus étranger. Sous Windows, où
+    les signaux terminent les processus immédiatement, "stop" demande l'arrêt
+    au démon via un fichier "daemon-&lt;process id&gt;.stop" dans le dossier de
+    configuration, qu'il vérifie chaque seconde.
 -->
 
 "service install" registers the daemon per user, without admin rights:
@@ -585,6 +628,126 @@ synchronization.
   out with `loginctl enable-linger`).<!--deDE:Linux: systemd-Benutzer-Unit "~/.config/systemd/user/gocryptfs-standalone.service" (Protokoll über `journalctl --user -u gocryptfs-standalone`, läuft nach dem Abmelden weiter mit `loginctl enable-linger`).--><!--frFR:Linux: unité utilisateur systemd "~/.config/systemd/user/gocryptfs-standalone.service" (journal via `journalctl --user -u gocryptfs-standalone`, continue après la déconnexion avec `loginctl enable-linger`).-->
 - Windows: Command file in the user's startup folder, starting the daemon
   minimized and logging to "daemon.log" in the configuration folder.<!--deDE:Windows: Befehlsdatei im Autostart-Ordner des Benutzers, die den Daemon minimiert startet und nach "daemon.log" im Konfigurationsordner protokolliert.--><!--frFR:Windows: Fichier de commandes dans le dossier de démarrage de l'utilisateur, lançant le démon réduit et journalisant dans "daemon.log" du dossier de configuration.-->
+
+<!--|deDE:Klartextordner versiegeln-->
+<!--|frFR:Sceller le dossier en clair-->
+### Sealing the plaintext folder
+
+Unlike a gocryptfs mount the plaintext folder is a real copy on disk, readable
+while no daemon runs. With "sealOnStop": true (or "--seal-on-stop" for
+"pair add" or a single "daemon" run) the daemon synchronizes such a pair a
+last time when it stops ("stop", the service manager, Ctrl+C, SIGTERM) and
+removes every plaintext entry the vault holds in exactly that version. The
+next start ("daemon" or "sync") restores the folder from the vault.
+<!--deDE:
+    Anders als bei einer gocryptfs-Einhängung ist der Klartextordner eine
+    echte Kopie auf dem Datenträger, lesbar, solange kein Daemon läuft. Mit
+    "sealOnStop": true (oder "--seal-on-stop" für "pair add" oder einen
+    einzelnen "daemon"-Lauf) synchronisiert der Daemon ein solches Paar beim
+    Beenden ("stop", der Dienstverwalter, Strg+C, SIGTERM) ein letztes Mal
+    und entfernt jeden Klartexteintrag, den der Tresor in genau dieser
+    Version enthält. Der nächste Start ("daemon" oder "sync") stellt den
+    Ordner aus dem Tresor wieder her.
+-->
+<!--frFR:
+    Contrairement à un montage gocryptfs, le dossier en clair est une vraie
+    copie sur le disque, lisible tant qu'aucun démon ne tourne. Avec
+    "sealOnStop": true (ou "--seal-on-stop" pour "pair add" ou une seule
+    exécution de "daemon"), le démon synchronise une telle paire une dernière
+    fois à son arrêt ("stop", le gestionnaire de services, Ctrl+C, SIGTERM)
+    et supprime chaque entrée en clair que le coffre contient exactement dans
+    cette version. Le démarrage suivant ("daemon" ou "sync") restaure le
+    dossier depuis le coffre.
+-->
+
+- Nothing gets lost: entries changed after the last synchronization, not yet
+  in the vault, excluded or not synchronizable stay and are logged as "Kept
+  plaintext …". The plaintext folder itself stays as well.<!--deDE:Nichts geht verloren: Nach dem letzten Abgleich geänderte, noch nicht im Tresor vorhandene, ausgeschlossene oder nicht synchronisierbare Einträge bleiben und werden als "Kept plaintext …" protokolliert. Der Klartextordner selbst bleibt ebenfalls.--><!--frFR:Rien n'est perdu: les entrées modifiées après la dernière synchronisation, pas encore dans le coffre, exclues ou non synchronisables restent et sont journalisées comme "Kept plaintext …". Le dossier en clair lui-même reste également.-->
+- The state of the pair is marked as sealed before the first removal. While
+  marked, missing plaintext entries are restored, never deleted in the vault,
+  even if the removal got interrupted. Entries still present (or created in
+  the meantime) follow the usual rules. The mark is cleared once everything
+  is restored without failures.<!--deDE:Der Zustand des Paares wird vor dem ersten Entfernen als versiegelt markiert. Solange die Markierung besteht, werden fehlende Klartexteinträge wiederhergestellt und nie im Tresor gelöscht, auch wenn das Entfernen unterbrochen wurde. Noch vorhandene (oder zwischenzeitlich angelegte) Einträge folgen den üblichen Regeln. Die Markierung verschwindet, sobald alles fehlerfrei wiederhergestellt ist.--><!--frFR:L'état de la paire est marqué comme scellé avant la première suppression. Tant que la marque existe, les entrées en clair manquantes sont restaurées et jamais supprimées dans le coffre, même si la suppression a été interrompue. Les entrées encore présentes (ou créées entre-temps) suivent les règles habituelles. La marque disparaît dès que tout est restauré sans échec.-->
+- Every start decrypts the whole vault again, which takes a while for large
+  pairs. "sync" restores a sealed pair as well but never seals it.<!--deDE:Jeder Start entschlüsselt den ganzen Tresor erneut, was bei großen Paaren dauert. "sync" stellt ein versiegeltes Paar ebenfalls wieder her, versiegelt es aber nie.--><!--frFR:Chaque démarrage déchiffre à nouveau tout le coffre, ce qui prend du temps pour les grandes paires. "sync" restaure aussi une paire scellée mais ne la scelle jamais.-->
+
+Limits, sealing is no replacement for a real encrypted mount:
+<!--deDE:Grenzen, das Versiegeln ersetzt keine echte verschlüsselte Einhängung:-->
+<!--frFR:Limites, le scellement ne remplace pas un vrai montage chiffré:-->
+
+- Sealing only happens on a clean stop. After a crash, a power loss, a
+  "kill -9" or when the operating system ends the daemon before it finished
+  (systemd after 90 seconds, launchd after about 20 seconds) the plaintext
+  stays until the next start and stop. "stop" itself never interrupts a
+  seal: after a minute it reports that sealing is still running and the
+  daemon continues on its own.
+  Windows does not tell console programs about log off or shut down, stop the
+  daemon before ("gocryptfs-standalone stop"); closing its console window
+  leaves a few seconds only.<!--deDE:Versiegelt wird nur bei einem sauberen Beenden. Nach einem Absturz, einem Stromausfall, einem "kill -9" oder wenn das Betriebssystem den Daemon beendet, bevor er fertig ist (systemd nach 90 Sekunden, launchd nach etwa 20 Sekunden), bleibt der Klartext bis zum nächsten Start und Beenden liegen. "stop" selbst unterbricht nie ein Versiegeln: Nach einer Minute meldet es, dass noch versiegelt wird, und der Daemon macht allein weiter. Windows informiert Konsolenprogramme nicht über Abmelden oder Herunterfahren, daher den Daemon vorher beenden ("gocryptfs-standalone stop"); das Schließen seines Konsolenfensters lässt nur wenige Sekunden.--><!--frFR:Le scellement n'a lieu qu'à un arrêt propre. Après un plantage, une coupure de courant, un "kill -9" ou lorsque le système d'exploitation termine le démon avant qu'il ait fini (systemd après 90 secondes, launchd après environ 20 secondes), le texte en clair reste jusqu'au prochain démarrage et arrêt. "stop" lui-même n'interrompt jamais un scellement: après une minute, il signale que le scellement est encore en cours et le démon continue seul. Windows n'informe pas les programmes console de la déconnexion ou de l'arrêt, arrêtez donc le démon avant ("gocryptfs-standalone stop"); fermer sa fenêtre console ne laisse que quelques secondes.-->
+- Removing only unlinks files, their content is not wiped from the storage.
+  SSDs, copy on write file systems (APFS, btrfs, ZFS), snapshots (e.g. local
+  Time Machine snapshots), backups, search indexes, thumbnails and editor
+  swap or recovery files can keep copies; overwriting before removing does not
+  help reliably there. Full disk encryption (FileVault, BitLocker, LUKS)
+  remains the protection against offline access.<!--deDE:Entfernen löst nur die Verknüpfung der Dateien, ihr Inhalt wird nicht vom Datenträger gelöscht. SSDs, Copy-on-Write-Dateisysteme (APFS, btrfs, ZFS), Schnappschüsse (z. B. lokale Time-Machine-Schnappschüsse), Sicherungen, Suchindizes, Vorschaubilder und Auslagerungs- oder Wiederherstellungsdateien von Editoren können Kopien behalten; vorheriges Überschreiben hilft dort nicht zuverlässig. Vollverschlüsselung des Datenträgers (FileVault, BitLocker, LUKS) bleibt der Schutz gegen Zugriff im ausgeschalteten Zustand.--><!--frFR:La suppression ne fait que délier les fichiers, leur contenu n'est pas effacé du support. Les SSD, les systèmes de fichiers copy-on-write (APFS, btrfs, ZFS), les instantanés (par exemple les instantanés locaux de Time Machine), les sauvegardes, les index de recherche, les vignettes et les fichiers d'échange ou de récupération des éditeurs peuvent conserver des copies; écraser avant de supprimer n'y aide pas de façon fiable. Le chiffrement complet du disque (FileVault, BitLocker, LUKS) reste la protection contre l'accès hors ligne.-->
+- Plaintext versions moved into the trash (deleted in the vault elsewhere)
+  stay readable in "pairs/&lt;id&gt;/trash/&lt;date&gt;/plaintext" for
+  "trashDays"; "trashDays": 0 purges them with the next run.<!--deDE:In den Papierkorb verschobene Klartextversionen (anderswo im Tresor gelöscht) bleiben für "trashDays" in "pairs/&lt;id&gt;/trash/&lt;date&gt;/plaintext" lesbar; "trashDays": 0 leert sie beim nächsten Lauf.--><!--frFR:Les versions en clair déplacées dans la corbeille (supprimées ailleurs dans le coffre) restent lisibles dans "pairs/&lt;id&gt;/trash/&lt;date&gt;/plaintext" pendant "trashDays"; "trashDays": 0 les purge à l'exécution suivante.-->
+- Programs keeping files open may write them back after their removal (or
+  fail to remove them on Windows). Such files stay and get merged on the next
+  start.<!--deDE:Programme, die Dateien offen halten, können sie nach dem Entfernen zurückschreiben (oder unter Windows das Entfernen verhindern). Solche Dateien bleiben und werden beim nächsten Start zusammengeführt.--><!--frFR:Les programmes gardant des fichiers ouverts peuvent les réécrire après leur suppression (ou empêcher leur suppression sous Windows). Ces fichiers restent et sont fusionnés au démarrage suivant.-->
+
+The plaintext folder can additionally live on a RAM based file system. Then
+it never reaches persistent storage and even a crash or power loss leaves
+nothing behind; an empty plaintext folder after a reboot is restored from the
+vault, never mistaken for deletions. Changes not synchronized yet get lost
+with the RAM content (with "watch" at most 30 seconds of changes, otherwise up
+to an interval), the folder's size is limited by memory and swap may still
+write memory pages to disk unless it is encrypted:
+<!--deDE:
+    Der Klartextordner kann zusätzlich auf einem RAM-basierten Dateisystem
+    liegen. Dann erreicht er nie dauerhaften Speicher und selbst ein Absturz
+    oder Stromausfall hinterlässt nichts; ein nach einem Neustart leerer
+    Klartextordner wird aus dem Tresor wiederhergestellt und nie für
+    Löschungen gehalten. Noch nicht synchronisierte Änderungen gehen mit dem
+    RAM-Inhalt verloren (mit "watch" höchstens 30 Sekunden an Änderungen,
+    sonst bis zu einem Intervall), die Größe des Ordners ist durch den
+    Arbeitsspeicher begrenzt und eine unverschlüsselte Auslagerung kann
+    Speicherseiten dennoch auf den Datenträger schreiben:
+-->
+<!--frFR:
+    Le dossier en clair peut en plus se trouver sur un système de fichiers en
+    RAM. Il n'atteint alors jamais le stockage persistant et même un
+    plantage ou une coupure de courant ne laisse rien; un dossier en clair
+    vide après un redémarrage est restauré depuis le coffre, jamais pris pour
+    des suppressions. Les modifications pas encore synchronisées sont perdues
+    avec le contenu de la RAM (avec "watch" au plus 30 secondes de
+    modifications, sinon jusqu'à un intervalle), la taille du dossier est
+    limitée par la mémoire et un espace d'échange non chiffré peut tout de
+    même écrire des pages mémoire sur le disque:
+-->
+
+```bash
+# Linux: per user tmpfs, only accessible by the user, cleared on log out.
+gocryptfs-standalone pair add documents ~/GoogleDrive/vault "$XDG_RUNTIME_DIR/documents" --seal-on-stop
+# macOS: RAM disk of 1 GiB (2097152 sectors of 512 bytes) until the next reboot.
+diskutil erasevolume HFS+ Private "$(hdiutil attach -nomount ram://2097152)"
+gocryptfs-standalone pair add documents ~/GoogleDrive/vault /Volumes/Private/documents --seal-on-stop
+```
+
+Windows has no built in RAM disk, third party drivers need admin rights. A
+RAM disk has to exist before the daemon starts (e.g. created by a log in
+script on macOS).
+<!--deDE:
+    Windows bringt keine RAM-Disk mit, Treiber von Drittanbietern benötigen
+    Administratorrechte. Eine RAM-Disk muss vor dem Start des Daemons
+    existieren (unter macOS z. B. von einem Anmeldeskript angelegt).
+-->
+<!--frFR:
+    Windows n'a pas de disque RAM intégré, les pilotes tiers nécessitent des
+    droits d'administrateur. Un disque RAM doit exister avant le démarrage du
+    démon (par exemple créé par un script de connexion sous macOS).
+-->
 
 <!--|deDE:Verwandte Projekte-->
 <!--|frFR:Projets connexes-->

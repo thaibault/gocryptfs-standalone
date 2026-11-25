@@ -18,7 +18,7 @@
 */
 // region imports
 import {existsSync} from 'fs'
-import {mkdir, open, readFile, rm} from 'fs/promises'
+import {mkdir, open, readFile, rm, writeFile} from 'fs/promises'
 import {dirname, join, resolve} from 'path'
 import type {Readable} from 'stream'
 import {parseArgs} from 'util'
@@ -54,6 +54,7 @@ import {getPairPassword, getPassword} from './password'
 import {createService, getProgram, LOG_FILE_NAME} from './service'
 import type {Service} from './service'
 import {
+    isPercentage,
     loadSettings,
     parseInterval,
     PAIR_NAME_PATTERN,
@@ -65,14 +66,17 @@ import type {PairSettings, PasswordSource, ResolvedPair} from './settings'
 import {
     acquireLock,
     DAEMON_LOCK_FILE_NAME,
+    DEFAULT_MAXIMAL_DELETION_PERCENTAGE,
     DEFAULT_TRASH_RETENTION_IN_DAYS,
     getConfigurationDirectory,
     getLockHolder,
     getPairDirectory,
-    LockedError
+    LockedError,
+    MassDeletionError
 } from './state'
 import {
     createProcessControl,
+    getSealingPath,
     getStopRequestPath,
     isDaemonCommandLine,
     STOP_REQUEST_POLL_INTERVAL_IN_MILLISECONDS,
@@ -92,6 +96,7 @@ export const EXIT_CODES = {
     usage: 2,
     unsupportedVault: 3,
     locked: 4,
+    massDeletion: 5,
     wrongPassword: 12
 } as const
 
@@ -137,6 +142,14 @@ Options:
   --exclude <pattern>            Leave out matching entries on both sides
                                  (repeatable, see below).
   --dry-run                      Only show what "sync" would do.
+  --max-delete-percent <number>  Refuse synchronizations deleting more than
+                                 this share of a pair's entries since they
+                                 are missing in the vault (default ${String(
+        DEFAULT_MAXIMAL_DELETION_PERCENTAGE
+    )}, 100
+                                 disables it, an empty vault is always
+                                 refused).
+  --allow-mass-delete            Let "sync" apply such deletions once.
   --trash-days <number>          Days to keep entries "sync" moved into the
                                  trash (default ${String(
         DEFAULT_TRASH_RETENTION_IN_DAYS
@@ -217,6 +230,8 @@ export interface Dependencies {
     service: Service
     // Stops a running daemon (defaults to SIGINT and SIGTERM).
     signal?: AbortSignal
+    // Time "stop" waits for a daemon (see "stop" module).
+    stopTimeoutInMilliseconds?: number
     // Continues a daemon detached, resolves with its process id.
     startInBackground: (options: BackgroundOptions) => Promise<number>
     watchPair: typeof watchPair
@@ -347,7 +362,9 @@ export const run = async (
                 masterkey: {type: 'string'},
                 passfile: {type: 'string'},
                 scryptn: {type: 'string'},
+                'allow-mass-delete': {type: 'boolean'},
                 'dry-run': {type: 'boolean'},
+                'max-delete-percent': {type: 'string'},
                 // NOTE: Internal, see "background" module.
                 [BACKGROUND_CHILD_OPTION_NAME]: {type: 'boolean'},
                 'run-in-background': {type: 'boolean'},
@@ -389,6 +406,10 @@ export const run = async (
         )
             throw new UsageError(
                 '"--run-in-background" applies to "daemon" only.'
+            )
+        if (values['allow-mass-delete'] && command !== 'sync')
+            throw new UsageError(
+                '"--allow-mass-delete" applies to "sync" only.'
             )
         if (
             values['seal-on-stop'] !== undefined &&
@@ -483,6 +504,20 @@ export const run = async (
             return days
         }
 
+        const parseMaximalDeletionPercentage = (): number | undefined => {
+            if (values['max-delete-percent'] === undefined)
+                return undefined
+
+            const percentage = Number(values['max-delete-percent'])
+            if (!isPercentage(percentage))
+                throw new UsageError(
+                    '"--max-delete-percent" has to be a number between 0 ' +
+                    'and 100.'
+                )
+
+            return percentage
+        }
+
         const synchronizePair = async (
             pair: ResolvedPair,
             contentKey: Buffer,
@@ -491,9 +526,11 @@ export const run = async (
             seal = false
         ) => {
             const result = await synchronize({
+                allowMassDeletion: Boolean(values['allow-mass-delete']),
                 dryRun,
                 excludes: createExcludeMatcher(pair.excludes),
                 key: contentKey,
+                maximalDeletionPercentage: pair.maxDeletePercent,
                 onAction: (action) => {
                     const description = describeAction(action)
                     if (description)
@@ -564,6 +601,7 @@ export const run = async (
                 )
 
             const trashDays = parseTrashDays()
+            const maxDeletePercent = parseMaximalDeletionPercentage()
 
             return pairNames.map((name) => {
                 const pair = resolvePair(settings, name)
@@ -574,6 +612,8 @@ export const run = async (
                         {} :
                         {config: resolve(pair.config)}),
                     excludes: [...pair.excludes, ...values.exclude ?? []],
+                    maxDeletePercent:
+                        maxDeletePercent ?? pair.maxDeletePercent,
                     plaintext: resolve(pair.plaintext),
                     sealOnStop: values['seal-on-stop'] ?? pair.sealOnStop,
                     trashDays: trashDays ?? pair.trashDays,
@@ -690,6 +730,8 @@ export const run = async (
                         {config: values.config}),
                     excludes: values.exclude ?? [],
                     intervalInMilliseconds: 0,
+                    maxDeletePercent: parseMaximalDeletionPercentage() ??
+                        DEFAULT_MAXIMAL_DELETION_PERCENTAGE,
                     name: 'command line',
                     password: 'prompt',
                     plaintext,
@@ -757,6 +799,8 @@ export const run = async (
                         '    password:  ' +
                         `${JSON.stringify(pair.password)}\n` +
                         `    trash:     ${String(pair.trashDays)} days\n` +
+                        '    deletions: refused above ' +
+                        `${String(pair.maxDeletePercent)}%\n` +
                         `    watch:     ${pair.watch ? 'yes' : 'no'}\n` +
                         '    seal:      ' +
                         `${pair.sealOnStop ? 'on stop' : 'no'}\n` +
@@ -841,6 +885,9 @@ export const run = async (
                     ...(config === undefined ? {} : {config}),
                     ...(values.exclude ? {excludes: values.exclude} : {}),
                     ...(values.interval ? {interval: values.interval} : {}),
+                    ...(values['max-delete-percent'] === undefined ?
+                        {} :
+                        {maxDeletePercent: parseMaximalDeletionPercentage()}),
                     password,
                     plaintext,
                     ...(values['seal-on-stop'] === undefined ?
@@ -931,17 +978,29 @@ export const run = async (
                 if (values['run-in-background']) {
                     let failed = false
                     try {
-                        for (const pair of pairs) {
-                            const result = await synchronizePair(
-                                pair,
-                                contentKeys.get(pair.name) as Buffer,
-                                (text) => {
-                                    output.log(`"${pair.name}": ${text}`)
-                                }
-                            )
-                            output.log(`"${pair.name}": ${result.summary}`)
-                            failed ||= result.failed
-                        }
+                        for (const pair of pairs)
+                            try {
+                                const result = await synchronizePair(
+                                    pair,
+                                    contentKeys.get(pair.name) as Buffer,
+                                    (text) => {
+                                        output.log(`"${pair.name}": ${text}`)
+                                    }
+                                )
+                                output.log(`"${pair.name}": ${result.summary}`)
+                                failed ||= result.failed
+                            } catch (error) {
+                                /*
+                                    NOTE: Typical right after log in while
+                                    the cloud client catches up, the
+                                    detached daemon retries.
+                                */
+                                if (!(error instanceof MassDeletionError))
+                                    throw error
+
+                                output.error(`"${pair.name}": ${error.message}`)
+                                failed = true
+                            }
 
                         // NOTE: Released so the detached copy can take them.
                         for (const releaseLock of releaseLocks.splice(0))
@@ -961,6 +1020,12 @@ export const run = async (
                                 ...(trashDays === undefined ?
                                     [] :
                                     ['--trash-days', trashDays]),
+                                ...(values['max-delete-percent'] === undefined ?
+                                    [] :
+                                    [
+                                        '--max-delete-percent',
+                                        values['max-delete-percent']
+                                    ]),
                                 ...(values.watch === undefined ?
                                     [] :
                                     [values.watch ? '--watch' : '--no-watch']),
@@ -1010,6 +1075,8 @@ export const run = async (
 
                     // See "stop" module (graceful stops on windows).
                     await rm(stopRequestPath, {force: true})
+                    // NOTE: Left behind by a crashed process with our id.
+                    await rm(getSealingPath(process.pid), {force: true})
                     stopRequestPoller = setInterval(
                         () => {
                             if (existsSync(stopRequestPath))
@@ -1036,28 +1103,42 @@ export const run = async (
                             restores an interrupted seal.
                         */
                         beforeStop: async () => {
-                            for (const pair of pairs.filter(({sealOnStop}) =>
+                            const sealedPairs = pairs.filter(({sealOnStop}) =>
                                 sealOnStop
-                            ))
-                                try {
-                                    await synchronizePair(
-                                        pair,
-                                        contentKeys.get(pair.name) as Buffer,
-                                        (text) => {
-                                            log(`"${pair.name}": ${text}`)
-                                        },
-                                        false,
-                                        true
-                                    )
-                                } catch (error) {
-                                    log(
-                                        `"${pair.name}": sealing failed, ` +
-                                        'the plaintext directory stays: ' +
-                                        (error instanceof Error ?
-                                            error.message :
-                                            String(error))
-                                    )
-                                }
+                            )
+                            if (sealedPairs.length === 0)
+                                return
+
+                            // Lets "stop" know why we take longer.
+                            const sealingPath = getSealingPath(process.pid)
+                            await mkdir(dirname(sealingPath), {recursive: true})
+                            await writeFile(sealingPath, '')
+                            try {
+                                for (const pair of sealedPairs)
+                                    try {
+                                        const key =
+                                            contentKeys.get(pair.name) as Buffer
+                                        await synchronizePair(
+                                            pair,
+                                            key,
+                                            (text) => {
+                                                log(`"${pair.name}": ${text}`)
+                                            },
+                                            false,
+                                            true
+                                        )
+                                    } catch (error) {
+                                        log(
+                                            `"${pair.name}": sealing failed, ` +
+                                            'the plaintext directory stays: ' +
+                                            (error instanceof Error ?
+                                                error.message :
+                                                String(error))
+                                        )
+                                    }
+                            } finally {
+                                await rm(sealingPath, {force: true})
+                            }
                         },
                         isSynchronized: (pair, changes) => isSynchronized(
                             {plainPath: pair.plaintext, vaultPath: pair.vault},
@@ -1162,11 +1243,21 @@ export const run = async (
                         'application, stop it yourself if it is one.'
                     )
 
-                await stopDaemon(pid, control)
-                await removeLocks(pid)
-                output.log(
-                    `Stopped daemon (process ${String(pid)}) of ${names}.`
-                )
+                if (await stopDaemon(
+                    pid, control, givenDependencies.stopTimeoutInMilliseconds
+                ) === 'sealing')
+                    // NOTE: Keeps its locks until it is done.
+                    output.log(
+                        `Daemon (process ${String(pid)}) of ${names} is ` +
+                        'still sealing its plaintext directories and stops ' +
+                        'on its own when done (see its log).'
+                    )
+                else {
+                    await removeLocks(pid)
+                    output.log(
+                        `Stopped daemon (process ${String(pid)}) of ${names}.`
+                    )
+                }
             }
 
             return 0
@@ -1220,6 +1311,8 @@ export const run = async (
             return EXIT_CODES.wrongPassword
         if (error instanceof LockedError)
             return EXIT_CODES.locked
+        if (error instanceof MassDeletionError)
+            return EXIT_CODES.massDeletion
         if (error instanceof BackgroundStartError)
             return error.exitCode || EXIT_CODES.error
 

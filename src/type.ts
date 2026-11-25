@@ -103,9 +103,10 @@ export interface StateEntry {
 /**
  * Whether the plaintext directory has been removed after synchronizing (see
  * "seal" in the "synchronize" module). The state "sealing" means the removal
- * started but did not finish (e.g. a crash), "sealed" that it finished. In
- * both cases missing plaintext entries are not deleted but not restored yet,
- * the next synchronization restores them from the vault.
+ * started but did not finish (interrupted by a crash for instance),
+ * "sealed" that it finished. In both cases missing plaintext entries are
+ * not deleted but not restored yet, the next synchronization restores them
+ * from the vault.
  */
 export type SealState = 'sealed' | 'sealing'
 export interface SynchronizationState {

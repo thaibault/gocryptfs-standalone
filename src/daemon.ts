@@ -18,7 +18,7 @@
 */
 // region imports
 import type {ResolvedPair} from './settings'
-import {LockedError} from './state'
+import {LockedError, MassDeletionError} from './state'
 import type {Change} from './type'
 import type {Watcher} from './watch'
 // endregion
@@ -75,6 +75,8 @@ interface PairState {
     changes: Map<string, Change>
     // Next synchronization by interval.
     dueAt: number
+    // Whether a refused mass deletion has been logged since the last run.
+    massDeletionReported: boolean
     // Whether the last attempt to watch failed.
     watchFailed: boolean
     watcher?: Watcher
@@ -110,7 +112,8 @@ export const sleep = (
  * after changes (if watched) or at the latest in its own interval until given
  * signal aborts. Runs never overlap, so a slow pair delays the others instead
  * of competing for disk and cpu. Failures are logged and retried in the next
- * interval (shortly if another process synchronizes the pair), failed
+ * interval (shortly if another process synchronizes the pair, refused mass
+ * deletions get logged once until a run succeeds again), failed
  * watchers get restarted periodically.
  * @param options - Pairs, synchronization, watching and logging.
  * @returns Promise resolving after the abort when no run is active anymore
@@ -139,6 +142,7 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
         {
             changes: new Map(),
             dueAt: 0,
+            massDeletionReported: false,
             watchAt: watchPair && pair.watch ? 0 : undefined,
             watchFailed: false
         }
@@ -269,10 +273,19 @@ export const runDaemon = async (options: DaemonOptions): Promise<void> => {
                         let nextRunIn = pair.intervalInMilliseconds
                         try {
                             const summary = await synchronizePair(pair)
+                            state.massDeletionReported = false
                             if (summary)
                                 log(`"${pair.name}": ${summary}`)
                         } catch (error) {
-                            if (error instanceof LockedError) {
+                            if (error instanceof MassDeletionError) {
+                                /*
+                                    NOTE: Retried like failures, but only
+                                    reported once until a run succeeds.
+                                */
+                                if (!state.massDeletionReported)
+                                    log(`"${pair.name}": ${error.message}`)
+                                state.massDeletionReported = true
+                            } else if (error instanceof LockedError) {
                                 /*
                                     NOTE: A full run follows, so the
                                     collected changes are covered.

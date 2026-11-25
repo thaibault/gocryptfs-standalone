@@ -606,6 +606,48 @@ describe('cli', () => {
                 delete process.env.GOCRYPTFS_PASSWORD
             }
         })
+        test('sync refuses mass deletions', async () => {
+            const massVault = join(temporaryDirectory, 'mass-vault')
+            const massPlain = join(temporaryDirectory, 'mass-plain')
+            await initializeVault(massVault, Buffer.from('secret'), 10)
+            process.env.GOCRYPTFS_PASSWORD = 'secret'
+            try {
+                expect((await runWithPairs([
+                    'pair', 'add', 'mass', massVault, massPlain,
+                    '--password', 'environment', '--max-delete-percent', '80'
+                ])).code).toStrictEqual(0)
+                expect((await runWithPairs(['pair', 'list'])).logs.join('\n'))
+                    .toContain('deletions: refused above 80%')
+
+                await mkdir(massPlain, {recursive: true})
+                await writeFile(join(massPlain, 'a.txt'), 'a')
+                expect((await runWithPairs(['sync', 'mass'])).code)
+                    .toStrictEqual(0)
+                await rm(join(massVault, 'a.txt'))
+
+                const refused = await runWithPairs(['sync', 'mass'])
+                expect(refused.code).toStrictEqual(EXIT_CODES.massDeletion)
+                expect(refused.errors[0]).toContain('The vault is empty')
+                expect(existsSync(join(massPlain, 'a.txt'))).toStrictEqual(true)
+
+                expect((await runWithPairs(
+                    ['sync', 'mass', '--allow-mass-delete']
+                )).code).toStrictEqual(0)
+                expect(existsSync(join(massPlain, 'a.txt'))).toStrictEqual(false)
+
+                expect((await runWithPairs(
+                    ['daemon', 'mass', '--allow-mass-delete']
+                )).errors).toStrictEqual(
+                    ['"--allow-mass-delete" applies to "sync" only.']
+                )
+                expect((await runWithPairs(
+                    ['sync', 'mass', '--max-delete-percent', '101']
+                )).code).toStrictEqual(EXIT_CODES.usage)
+            } finally {
+                await runWithPairs(['pair', 'remove', 'mass'])
+                delete process.env.GOCRYPTFS_PASSWORD
+            }
+        })
         test('pair with a separate configuration file', async () => {
             const separateVault = join(temporaryDirectory, 'pair-separate-vault')
             const configuration = join(temporaryDirectory, 'pair-separate.conf')
@@ -721,6 +763,7 @@ describe('cli', () => {
                     '/usr/bin/vim'
                 ),
                 isRunning: (pid) => running.has(pid),
+                isSealing: () => false,
                 terminate: (pid) => {
                     terminated.push(pid)
                     running.delete(pid)
@@ -768,6 +811,26 @@ describe('cli', () => {
             expect(terminated).toStrictEqual([100])
             expect(existsSync(thirdLock)).toStrictEqual(true)
             await rm(thirdLock)
+
+            // A daemon still sealing after the timeout keeps its locks.
+            await writeFile(getLockPath(vault, plain), '100')
+            const sealing = await runWithPairs(['stop', 'first'], undefined, {
+                processControl: {
+                    ...processControl,
+                    isRunning: (pid) => pid === 100,
+                    isSealing: () => true,
+                    terminate: () => undefined
+                },
+                stopTimeoutInMilliseconds: 50
+            })
+            expect(sealing.code).toStrictEqual(0)
+            expect(sealing.logs).toStrictEqual([
+                'Daemon (process 100) of "first" is still sealing its ' +
+                'plaintext directories and stops on its own when done (see ' +
+                'its log).'
+            ])
+            expect(existsSync(getLockPath(vault, plain))).toStrictEqual(true)
+            await rm(getLockPath(vault, plain))
 
             for (const name of ['first', 'second', 'third'])
                 await runWithPairs(['pair', 'remove', name])

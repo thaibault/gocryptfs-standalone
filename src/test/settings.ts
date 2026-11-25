@@ -76,6 +76,7 @@ describe('settings', () => {
                 custom: {
                     excludes: ['*.tmp'],
                     interval: '1h',
+                    maxDeletePercent: 100,
                     password: {file: '/password'},
                     plaintext: '/plain',
                     sealOnStop: true,
@@ -90,6 +91,7 @@ describe('settings', () => {
         expect(resolvePair(settings, 'plain')).toStrictEqual({
             excludes: DEFAULT_EXCLUDES,
             intervalInMilliseconds: 600000,
+            maxDeletePercent: 60,
             name: 'plain',
             password: 'prompt',
             plaintext: '/a',
@@ -101,6 +103,7 @@ describe('settings', () => {
         expect(resolvePair(settings, 'custom')).toStrictEqual({
             excludes: [...DEFAULT_EXCLUDES, '*.tmp'],
             intervalInMilliseconds: 3600000,
+            maxDeletePercent: 100,
             name: 'custom',
             password: {file: '/password'},
             plaintext: '/plain',
@@ -120,6 +123,11 @@ describe('settings', () => {
         settings.pairs.plain.sealOnStop = 1 as unknown as boolean
         expect(() => resolvePair(settings, 'plain'))
             .toThrow('"sealOnStop" has to be true or false')
+
+        settings.pairs.plain.sealOnStop = false
+        settings.pairs.plain.maxDeletePercent = 101
+        expect(() => resolvePair(settings, 'plain'))
+            .toThrow('"maxDeletePercent" has to be a number between 0 and 100')
     })
     test('loadSettings / saveSettings', async () => {
         const configurationDirectory = join(directory, 'configuration')

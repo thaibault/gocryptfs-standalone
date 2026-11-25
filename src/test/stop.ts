@@ -16,7 +16,7 @@
 // region imports
 import {spawn} from 'child_process'
 import {existsSync} from 'fs'
-import {mkdtemp, rm} from 'fs/promises'
+import {mkdtemp, rm, writeFile} from 'fs/promises'
 import {tmpdir} from 'os'
 import {join} from 'path'
 
@@ -25,6 +25,7 @@ import {describe, expect, test} from '@jest/globals'
 import type {CommandRunner} from '../keychain'
 import {
     createProcessControl,
+    getSealingPath,
     getStopRequestPath,
     isDaemonCommandLine,
     stopDaemon
@@ -89,6 +90,21 @@ describe('stop', () => {
             await rm(directory, {force: true, recursive: true})
         }
     })
+    test('sealing daemons are recognized via file', async () => {
+        const directory =
+            await mkdtemp(join(tmpdir(), 'gocryptfs-standalone-'))
+        try {
+            const control = createProcessControl(undefined, 'linux', directory)
+            expect(control.isSealing(42)).toStrictEqual(false)
+
+            await writeFile(getSealingPath(42, directory), '')
+            expect(control.isSealing(42)).toStrictEqual(true)
+            expect(getSealingPath(42, directory))
+                .toStrictEqual(join(directory, 'daemon-42.sealing'))
+        } finally {
+            await rm(directory, {force: true, recursive: true})
+        }
+    })
     test('stops a real process', async () => {
         const child = spawn(
             process.execPath,
@@ -104,7 +120,7 @@ describe('stop', () => {
                 await control.getCommandLine(pid) as string
             )).toStrictEqual(true)
 
-            await stopDaemon(pid, control)
+            expect(await stopDaemon(pid, control)).toStrictEqual('stopped')
             expect(control.isRunning(pid)).toStrictEqual(false)
             await exited
         } finally {
@@ -116,6 +132,7 @@ describe('stop', () => {
         const control: ProcessControl = {
             getCommandLine: () => Promise.resolve(null),
             isRunning: () => true,
+            isSealing: () => false,
             terminate: (pid) => terminated.push(pid)
         }
 
@@ -123,5 +140,9 @@ describe('stop', () => {
             'Daemon (process 42) did not stop within 0.05s.'
         )
         expect(terminated).toStrictEqual([42])
+
+        // A long running seal is no failure.
+        expect(await stopDaemon(42, {...control, isSealing: () => true}, 50, 10))
+            .toStrictEqual('sealing')
     })
 })

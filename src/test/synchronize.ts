@@ -42,6 +42,7 @@ import {
     getPairDirectory,
     loadState,
     LockedError,
+    MassDeletionError,
     purgeTrash,
     saveState,
     STATE_FILE_NAME
@@ -119,6 +120,17 @@ const sync = async (dryRun = false, excludes: Array<string> = []) => {
     return actions.filter(({type}) => !['forget', 'record'].includes(type))
 }
 
+const syncWith = (options: {
+    allowMassDeletion?: boolean, maximalDeletionPercentage?: number
+}) => synchronize({
+    configurationDirectory,
+    date: DATE,
+    host: 'host',
+    key,
+    plainPath: plain,
+    vaultPath: vault,
+    ...options
+})
 const syncWithResult = async (
     seal = false, excludes: Array<string> = []
 ): Promise<SynchronizationResult & {changes: Array<Action>}> => {
@@ -311,6 +323,8 @@ describe('synchronize', () => {
     })
     test('symbolic links are synchronized', async () => {
         await writePlain('a.txt', 'a')
+        // NOTE: Keeps the vault from getting empty (refused otherwise).
+        await writePlain('b.txt', 'b')
         await sync()
         await rm(join(vault, 'a.txt'))
         await symlink('target', join(plain, 'link'))
@@ -507,6 +521,102 @@ describe('synchronize', () => {
         expect(await sync()).toStrictEqual(
             [{type: 'trash', path: 'removed.txt', side: 'cipher'}]
         )
+    })
+    test('a lost plaintext directory is restored, not deleted', async () => {
+        await writePlain('a.txt', 'a')
+        await writePlain('dir/b.txt', 'b')
+        await sync()
+
+        await rm(plain, {force: true, recursive: true})
+        const result = await synchronize({
+            configurationDirectory,
+            date: DATE,
+            host: 'host',
+            key,
+            plainPath: plain,
+            vaultPath: vault
+        })
+        expect(result.warning).toStrictEqual(
+            'The plaintext directory is empty, restoring it from the vault ' +
+            'instead of deleting everything there.'
+        )
+        expect(result.unsealed).toStrictEqual(true)
+        expect(result.actions.map(({type}) => type)).toStrictEqual(
+            ['createDirectory', 'transfer', 'transfer']
+        )
+        expect(await readPlain('dir/b.txt')).toStrictEqual('b')
+        expect(await readCipher('a.txt')).toStrictEqual('a')
+        expect((await getState()).seal).toBeUndefined()
+    })
+    test('an empty vault is refused', async () => {
+        await writePlain('a.txt', 'a')
+        await writePlain('dir/b.txt', 'b')
+        await sync()
+        const stateBefore = await getState()
+
+        // E.g. a cloud client which did not download anything yet.
+        for (const name of ['a.txt', 'dir'])
+            await rm(join(vault, name), {force: true, recursive: true})
+
+        await expect(syncWith({maximalDeletionPercentage: 100})).rejects
+            .toThrow(new MassDeletionError(
+                'The vault is empty although 3 entries were synchronized ' +
+                'before, nothing was changed (cloud client not synchronized ' +
+                'yet or drive not mounted?). Synchronize with ' +
+                '"--allow-mass-delete" if this is intended.'
+            ))
+        expect(await readPlain('dir/b.txt')).toStrictEqual('b')
+        expect(await getState()).toStrictEqual(stateBefore)
+
+        // Taken over by the vault again once it arrives.
+        await writeCipher('a.txt', 'remote')
+        expect(await sync()).toStrictEqual([
+            {type: 'trash', path: 'dir/b.txt', side: 'plain'},
+            {type: 'removeDirectory', path: 'dir', side: 'plain'},
+            {type: 'transfer', path: 'a.txt', from: 'cipher'}
+        ])
+    })
+    test('deleting most entries missing in the vault is refused', async () => {
+        const name = (index: number) => `file-${String(index).padStart(2, '0')}`
+        for (let index = 0; index < 30; index++)
+            await writePlain(name(index), 'x')
+        await sync()
+
+        // 11 of 30 (37%) are below 60%.
+        for (let index = 0; index < 11; index++)
+            await rm(join(vault, name(index)))
+        expect((await syncWith({})).actions.filter(({type}) =>
+            type === 'trash'
+        )).toHaveLength(11)
+
+        // 15 of the remaining 19 (79%) are above.
+        for (let index = 11; index < 26; index++)
+            await rm(join(vault, name(index)))
+        await expect(syncWith({})).rejects.toThrow(
+            '15 of 19 synchronized entries (79%) are missing in the vault, ' +
+            'more than the allowed 60%'
+        )
+        expect(await exists(join(plain, name(11)))).toStrictEqual(true)
+        expect((await syncWith({maximalDeletionPercentage: 80})).actions)
+            .toHaveLength(15)
+
+        // At most 10 deletions are never refused by percentage.
+        for (let index = 26; index < 29; index++)
+            await rm(join(vault, name(index)))
+        expect((await syncWith({maximalDeletionPercentage: 0})).actions)
+            .toHaveLength(3)
+    })
+    test('mass deletions are applied when allowed', async () => {
+        await writePlain('a.txt', 'a')
+        await sync()
+        await rm(join(vault, 'a.txt'))
+
+        await expect(syncWith({})).rejects.toThrow(MassDeletionError)
+        const result = await syncWith({allowMassDeletion: true})
+        expect(result.actions).toStrictEqual(
+            [{type: 'trash', path: 'a.txt', side: 'plain'}]
+        )
+        expect(await exists(join(plain, 'a.txt'))).toStrictEqual(false)
     })
     test('failed restores keep the seal', async () => {
         await writePlain('a.txt', 'a')

@@ -31,11 +31,14 @@ import type {ExcludeMatcher} from './exclude'
 import {createPlan, getOtherSide, isSameSnapshot} from './plan'
 import {
     acquireLock,
+    DEFAULT_MAXIMAL_DELETION_PERCENTAGE,
     DEFAULT_TRASH_RETENTION_IN_DAYS,
     getConfigurationDirectory,
     getPairDirectory,
     getTrashDirectory,
     loadState,
+    MASS_DELETION_MINIMUM,
+    MassDeletionError,
     move,
     purgeTrash,
     saveState
@@ -56,6 +59,8 @@ import type {
 } from './type'
 // endregion
 export interface SynchronizationOptions {
+    // Applies deletions even if they exceed "maximalDeletionPercentage".
+    allowMassDeletion?: boolean
     configurationDirectory?: string
     date?: Date
     dryRun?: boolean
@@ -63,6 +68,12 @@ export interface SynchronizationOptions {
     excludes?: ExcludeMatcher
     host?: string
     key: Buffer
+    /*
+        Refuses to delete more than this share of all synchronized entries
+        because they are missing in the vault (100 disables the check, an
+        empty vault is refused anyway).
+    */
+    maximalDeletionPercentage?: number
     onAction?: (action: Action) => void
     plainPath: string
     /*
@@ -382,9 +393,51 @@ export const removePlaintext = async (
     }
 }
 /**
+ * Checks whether given actions would delete a suspiciously large part of the
+ * plaintext directory because entries are missing in the vault. This happens
+ * if a cloud client did not synchronize the vault (completely) yet or a drive
+ * is not mounted, rarely on purpose.
+ * @param actions - Planned actions.
+ * @param knownEntries - Number of entries synchronized before.
+ * @param vaultEntries - Number of entries currently in the vault.
+ * @param maximalPercentage - Share of known entries allowed to be deleted.
+ * @returns Reason to refuse the synchronization or null.
+ */
+export const getMassDeletionReason = (
+    actions: Array<Action>,
+    knownEntries: number,
+    vaultEntries: number,
+    maximalPercentage: number = DEFAULT_MAXIMAL_DELETION_PERCENTAGE
+): null | string => {
+    const deletions = actions.filter((action) =>
+        ['removeDirectory', 'trash'].includes(action.type) &&
+        'side' in action &&
+        action.side === 'plain'
+    ).length
+    if (deletions === 0 || knownEntries === 0)
+        return null
+
+    const hint = 'nothing was changed (cloud client not synchronized yet or ' +
+        'drive not mounted?). Synchronize with "--allow-mass-delete" if ' +
+        'this is intended.'
+    if (vaultEntries === 0)
+        return `The vault is empty although ${String(knownEntries)} ` +
+            `entries were synchronized before, ${hint}`
+
+    const percentage = deletions / knownEntries * 100
+    if (deletions > MASS_DELETION_MINIMUM && percentage > maximalPercentage)
+        return `${String(deletions)} of ${String(knownEntries)} ` +
+            `synchronized entries (${String(Math.round(percentage))}%) are ` +
+            'missing in the vault, more than the allowed ' +
+            `${String(maximalPercentage)}%, ${hint}`
+
+    return null
+}
+/**
  * Synchronizes a plaintext directory with a vault in both directions.
  * Missing plaintext entries of a sealed pair (see "seal" option) get restored
- * instead of being deleted in the vault.
+ * instead of being deleted in the vault. Refuses to delete large parts of the
+ * plaintext directory missing in the vault (see "getMassDeletionReason").
  * @param options - Pair, key and behavior.
  * @returns Planned (or applied) actions and failures.
  */
@@ -392,9 +445,11 @@ export const synchronize = async (
     options: SynchronizationOptions
 ): Promise<SynchronizationResult & {warning?: string}> => {
     const {
+        allowMassDeletion = false,
         dryRun = false,
         excludes = excludeNothing,
         key,
+        maximalDeletionPercentage = DEFAULT_MAXIMAL_DELETION_PERCENTAGE,
         onAction = () => {
             // Nothing to report by default.
         },
@@ -442,6 +497,26 @@ export const synchronize = async (
                     'plaintext file system can not represent.'
                 )
 
+        /*
+            NOTE: An empty plaintext directory most likely got lost (e.g. a
+            RAM disk after a reboot or an unmounted drive) and is restored
+            like a sealed one instead of deleting the whole vault.
+        */
+        let emptyPlaintextWarning: string | undefined
+        if (
+            state.seal === undefined &&
+            snapshots.plain.size === 0 &&
+            Object.keys(state.entries).length > 0
+        ) {
+            emptyPlaintextWarning = 'The plaintext directory is empty, ' +
+                'restoring it from the vault instead of deleting everything ' +
+                'there.'
+            state.seal = 'sealed'
+            // NOTE: Keeps restoring if this run gets interrupted.
+            if (!dryRun)
+                await saveState(pairDirectory, state)
+        }
+
         const wasSealed = state.seal !== undefined
         const plannedActions = createPlan(
             snapshots.plain,
@@ -458,8 +533,21 @@ export const synchronize = async (
             ...plannedActions.filter((action) => !excluded.has(action.path))
         ]
 
-        const result: SynchronizationResult & {warning?: string} =
-            {actions, failed: [], warning}
+        if (!allowMassDeletion) {
+            const reason = getMassDeletionReason(
+                actions,
+                Object.keys(state.entries).length,
+                snapshots.cipher.size,
+                maximalDeletionPercentage
+            )
+            // NOTE: Thrown before anything (including the state) changes.
+            if (reason)
+                throw new MassDeletionError(reason)
+        }
+
+        const result: SynchronizationResult & {warning?: string} = {
+            actions, failed: [], warning: warning ?? emptyPlaintextWarning
+        }
         if (dryRun) {
             for (const action of actions)
                 onAction(action)
