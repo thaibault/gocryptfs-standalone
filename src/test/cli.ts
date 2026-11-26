@@ -630,6 +630,18 @@ describe('cli', () => {
                 expect(refused.errors[0]).toContain('The vault is empty')
                 expect(existsSync(join(massPlain, 'a.txt'))).toStrictEqual(true)
 
+                // The daemon continues in the background anyway.
+                const backgroundStartCount = backgroundStarts.length
+                const refusedInForeground = await runWithPairs(
+                    ['daemon', 'mass', '--run-in-background']
+                )
+                expect(refusedInForeground.code)
+                    .toStrictEqual(EXIT_CODES.massDeletion)
+                expect(refusedInForeground.errors[0])
+                    .toContain('The vault is empty')
+                expect(backgroundStarts)
+                    .toHaveLength(backgroundStartCount + 1)
+
                 expect((await runWithPairs(
                     ['sync', 'mass', '--allow-mass-delete']
                 )).code).toStrictEqual(0)
@@ -645,6 +657,50 @@ describe('cli', () => {
                 )).code).toStrictEqual(EXIT_CODES.usage)
             } finally {
                 await runWithPairs(['pair', 'remove', 'mass'])
+                delete process.env.GOCRYPTFS_PASSWORD
+            }
+        })
+        test('partial synchronizations', async () => {
+            const partialVault = join(temporaryDirectory, 'partial-vault')
+            const partialPlain = join(temporaryDirectory, 'partial-plain')
+            await initializeVault(partialVault, Buffer.from('secret'), 10)
+            process.env.GOCRYPTFS_PASSWORD = 'secret'
+            try {
+                expect((await runWithPairs([
+                    'pair', 'add', 'partial', partialVault, partialPlain,
+                    '--password', 'environment', '--no-watch'
+                ])).code).toStrictEqual(0)
+
+                // An entry of different types on both sides gets skipped.
+                await mkdir(join(partialPlain, 'entry'), {recursive: true})
+                await writeFile(join(partialVault, 'entry'), 'no directory')
+                await writeFile(join(partialPlain, 'a.txt'), 'a')
+
+                const partial = await runWithPairs(['sync', 'partial'])
+                expect(partial.code).toStrictEqual(EXIT_CODES.partial)
+                expect(partial.logs.join('\n'))
+                    .toContain('skip entry: Type differs')
+                // Everything else got synchronized.
+                expect(existsSync(join(partialVault, 'a.txt')))
+                    .toStrictEqual(true)
+
+                // The daemon continues in the background anyway.
+                const backgroundStartCount = backgroundStarts.length
+                const background = await runWithPairs(
+                    ['daemon', 'partial', '--run-in-background']
+                )
+                expect(background.code).toStrictEqual(EXIT_CODES.partial)
+                expect(background.logs.at(-1))
+                    .toContain('Daemon continues in the background')
+                expect(backgroundStarts)
+                    .toHaveLength(backgroundStartCount + 1)
+
+                // Resolving the difference leads to a regular run again.
+                await rm(join(partialVault, 'entry'))
+                expect((await runWithPairs(['sync', 'partial'])).code)
+                    .toStrictEqual(0)
+            } finally {
+                await runWithPairs(['pair', 'remove', 'partial'])
                 delete process.env.GOCRYPTFS_PASSWORD
             }
         })

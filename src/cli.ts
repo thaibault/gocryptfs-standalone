@@ -97,7 +97,12 @@ export const EXIT_CODES = {
     unsupportedVault: 3,
     locked: 4,
     massDeletion: 5,
-    wrongPassword: 12
+    wrongPassword: 12,
+    /*
+        NOTE: The run itself completed but single entries were skipped or
+        failed (like "fsck" finding corrupted files in gocryptfs).
+    */
+    partial: 26
 } as const
 
 export const USAGE = `Usage: gocryptfs-standalone <command> [options]
@@ -333,7 +338,7 @@ const report =(output: Output, verb: string, result: TreeResult): number => {
     for (const {path, reason} of result.skipped)
         output.error(`Skipped "${path}": ${reason}`)
 
-    return result.skipped.length > 0 ? EXIT_CODES.error : 0
+    return result.skipped.length > 0 ? EXIT_CODES.partial : 0
 }
 /**
  * Runs the command line interface.
@@ -775,7 +780,7 @@ export const run = async (
                 }
             }
 
-            return failed ? EXIT_CODES.error : 0
+            return failed ? EXIT_CODES.partial : 0
         }
         case 'pair': {
             const [subcommand, ...pairParameters] = parameters
@@ -976,7 +981,13 @@ export const run = async (
                         )
 
                 if (values['run-in-background']) {
-                    let failed = false
+                    /*
+                        NOTE: Other errors end the command before the
+                        daemon continues in the background (exit code 1).
+                        A refused mass deletion outweighs single failed
+                        entries.
+                    */
+                    let exitCode = 0
                     try {
                         for (const pair of pairs)
                             try {
@@ -988,7 +999,8 @@ export const run = async (
                                     }
                                 )
                                 output.log(`"${pair.name}": ${result.summary}`)
-                                failed ||= result.failed
+                                if (result.failed && exitCode === 0)
+                                    exitCode = EXIT_CODES.partial
                             } catch (error) {
                                 /*
                                     NOTE: Typical right after log in while
@@ -999,7 +1011,7 @@ export const run = async (
                                     throw error
 
                                 output.error(`"${pair.name}": ${error.message}`)
-                                failed = true
+                                exitCode = EXIT_CODES.massDeletion
                             }
 
                         // NOTE: Released so the detached copy can take them.
@@ -1049,7 +1061,7 @@ export const run = async (
                             key.fill(0)
                     }
 
-                    return failed ? EXIT_CODES.error : 0
+                    return exitCode
                 }
 
                 const abortController = new AbortController()

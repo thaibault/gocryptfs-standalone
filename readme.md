@@ -263,7 +263,10 @@ sides are compared by content, and nothing gets deleted. The trash lives next
 to the state ("pairs/&lt;id&gt;/trash", vault files stay encrypted there) and
 gets purged after 30 days ("--trash-days"). Entries changing while being
 synchronized are skipped and retried next time, a lock prevents parallel
-runs of the same pair. "--dry-run" only shows what would happen.
+runs of the same pair. "--dry-run" only shows what would happen. A run which
+completes but skips or fails on single entries (e.g. sockets, entries of
+different types on both sides or files failing to decrypt) returns exit code
+26, a run failing as a whole exit code 1.
 <!--deDE:
     Ohne Zustand (erster Lauf) werden beide Seiten zusammengeführt, auf
     beiden Seiten vorhandene Dateien nach Inhalt verglichen, und nichts wird
@@ -272,7 +275,11 @@ runs of the same pair. "--dry-run" only shows what would happen.
     wird nach 30 Tagen geleert ("--trash-days"). Einträge, die sich während
     der Synchronisation ändern, werden übersprungen und beim nächsten Mal
     erneut versucht, eine Sperre verhindert parallele Läufe desselben
-    Paares. "--dry-run" zeigt nur, was passieren würde.
+    Paares. "--dry-run" zeigt nur, was passieren würde. Ein Lauf, der
+    abgeschlossen wird, aber einzelne Einträge überspringt oder bei ihnen
+    scheitert (z. B. Sockets, Einträge unterschiedlichen Typs auf beiden
+    Seiten oder nicht entschlüsselbare Dateien), endet mit Exit-Code 26, ein
+    insgesamt fehlgeschlagener Lauf mit Exit-Code 1.
 -->
 <!--frFR:
     Sans état (première exécution), les deux côtés sont fusionnés, les
@@ -282,7 +289,11 @@ runs of the same pair. "--dry-run" only shows what would happen.
     est vidée après 30 jours ("--trash-days"). Les entrées modifiées pendant
     la synchronisation sont ignorées et retentées la fois suivante, un verrou
     empêche les exécutions parallèles d'une même paire. "--dry-run" montre
-    seulement ce qui se passerait.
+    seulement ce qui se passerait. Une exécution qui aboutit mais ignore
+    certaines entrées ou échoue sur elles (par exemple des sockets, des
+    entrées de types différents des deux côtés ou des fichiers impossibles à
+    déchiffrer) se termine avec le code de sortie 26, une exécution échouant
+    entièrement avec le code de sortie 1.
 -->
 
 Two guards protect against folders which are only temporarily missing:
@@ -537,8 +548,10 @@ watching for "pair add" or a single "daemon" run.
 "--run-in-background" asks for missing passwords and synchronizes all pairs
 once in the foreground. Afterwards the daemon continues as a detached process
 logging to "daemon.log" in the configuration folder, the command returns
-(exit code 1 if the initial synchronization had failures, the daemon runs
-anyway). Unlocked keys are handed over via a pipe, never via arguments or
+(exit code 26 if the initial synchronization skipped or failed on single
+entries, 5 if it refused a mass deletion, the daemon runs anyway in both
+cases; exit code 1 if it failed as a whole, the daemon is not started then).
+Unlocked keys are handed over via a pipe, never via arguments or
 environment variables. "--log-file &lt;path&gt;" logs into another file
 (appended, missing folders are created); it must not be located inside a
 watched plaintext folder or vault. The process id is shown on start and stored
@@ -559,8 +572,11 @@ it checks every second.
     "--run-in-background" fragt fehlende Passwörter ab und synchronisiert
     alle Paare einmal im Vordergrund. Danach läuft der Daemon als
     abgekoppelter Prozess weiter und protokolliert nach "daemon.log" im
-    Konfigurationsordner, der Befehl kehrt zurück (Exit-Code 1, wenn die
-    erste Synchronisation Fehler hatte, der Daemon läuft trotzdem). Die
+    Konfigurationsordner, der Befehl kehrt zurück (Exit-Code 26, wenn die
+    erste Synchronisation einzelne Einträge übersprungen hat oder bei ihnen
+    gescheitert ist, 5, wenn sie eine Massenlöschung abgelehnt hat, der
+    Daemon läuft in beiden Fällen trotzdem; Exit-Code 1, wenn sie insgesamt
+    gescheitert ist, der Daemon wird dann nicht gestartet). Die
     entsperrten Schlüssel werden über eine Pipe übergeben, nie über
     Argumente oder Umgebungsvariablen. "--log-file &lt;path&gt;" protokolliert
     in eine andere Datei (angehängt, fehlende Ordner werden angelegt); sie
@@ -585,8 +601,11 @@ it checks every second.
     "--run-in-background" demande les mots de passe manquants et synchronise
     toutes les paires une fois au premier plan. Ensuite le démon continue en
     tant que processus détaché, journalisant dans "daemon.log" du dossier de
-    configuration, et la commande se termine (code de sortie 1 si la
-    synchronisation initiale a eu des erreurs, le démon tourne quand même).
+    configuration, et la commande se termine (code de sortie 26 si la
+    synchronisation initiale a ignoré certaines entrées ou échoué sur elles,
+    5 si elle a refusé une suppression massive, le démon tourne quand même
+    dans les deux cas; code de sortie 1 si elle a échoué entièrement, le
+    démon n'est alors pas démarré).
     Les clés déverrouillées sont transmises par un tube, jamais par des
     arguments ou des variables d'environnement. L'identifiant du processus
     est affiché au démarrage et stocké dans "daemon.lock" de chaque paire.
